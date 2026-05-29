@@ -1,4 +1,5 @@
 export type LeadStatus = "New" | "Qualified" | "Converted" | "Lost";
+export type LeadTemperature = "Hot" | "Warm" | "Cold";
 
 export type Lead = {
   id: string;
@@ -9,7 +10,10 @@ export type Lead = {
   source: string | null;
   status: LeadStatus;
   notes: string | null;
+  lead_score: number;
+  lead_temperature: LeadTemperature;
   created_at: string;
 };
 
 export const leadStatuses: LeadStatus[] = ["New", "Qualified", "Converted", "Lost"];
+export const leadTemperatures: LeadTemperature[] = ["Hot", "Warm", "Cold"];

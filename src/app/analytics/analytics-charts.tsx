@@ -31,6 +31,7 @@ type TrendData = {
 };
 
 type AnalyticsChartsProps = {
+  followUpTrendData: TrendData[];
   sourceData: SourceData[];
   statusData: StatusData[];
   trendData: TrendData[];
@@ -46,10 +47,16 @@ function EmptyChart({ label }: { label: string }) {
   );
 }
 
-export function AnalyticsCharts({ sourceData, statusData, trendData }: AnalyticsChartsProps) {
+export function AnalyticsCharts({
+  followUpTrendData,
+  sourceData,
+  statusData,
+  trendData,
+}: AnalyticsChartsProps) {
   const hasStatusData = statusData.some((item) => item.value > 0);
   const hasSourceData = sourceData.some((item) => item.leads > 0);
   const hasTrendData = trendData.some((item) => item.leads > 0);
+  const hasFollowUpTrendData = followUpTrendData.some((item) => item.leads > 0);
 
   return (
     <div className="mt-8 grid gap-5 xl:grid-cols-2">
@@ -154,6 +161,44 @@ export function AnalyticsCharts({ sourceData, statusData, trendData }: Analytics
           </div>
         ) : (
           <EmptyChart label="No trend data yet" />
+        )}
+      </section>
+
+      <section className="rounded-xl border border-white/10 bg-zinc-950 p-6 xl:col-span-2">
+        <div className="mb-6">
+          <h2 className="text-2xl font-black">Follow-Ups Generated Per Day</h2>
+          <p className="mt-2 text-sm text-zinc-500">
+            Daily AI follow-up generation across the latest window.
+          </p>
+        </div>
+        {hasFollowUpTrendData ? (
+          <div className="h-80">
+            <ResponsiveContainer height="100%" width="100%">
+              <LineChart data={followUpTrendData}>
+                <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
+                <XAxis dataKey="date" stroke="#71717a" tickLine={false} />
+                <YAxis allowDecimals={false} stroke="#71717a" tickLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    background: "#09090b",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: "10px",
+                    color: "#fff",
+                  }}
+                />
+                <Line
+                  activeDot={{ fill: "#f97316", r: 6 }}
+                  dataKey="leads"
+                  dot={{ fill: "#f97316", r: 4 }}
+                  stroke="#fb923c"
+                  strokeWidth={3}
+                  type="monotone"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <EmptyChart label="No follow-up generation data yet" />
         )}
       </section>
     </div>

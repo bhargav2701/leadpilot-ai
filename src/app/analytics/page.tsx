@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { requireUser } from "@/lib/auth/require-user";
+import type { FollowUp } from "@/types/follow-up";
 import type { Lead, LeadStatus } from "@/types/lead";
 import { leadStatuses } from "@/types/lead";
 import { AnalyticsCharts } from "./analytics-charts";
@@ -11,7 +12,7 @@ function formatDay(value: string) {
   );
 }
 
-function buildTrendData(leads: Lead[]) {
+function buildTrendData(items: Array<{ created_at: string }>) {
   const days = new Map<string, number>();
   const now = new Date();
 
@@ -22,8 +23,8 @@ function buildTrendData(leads: Lead[]) {
     days.set(key, 0);
   }
 
-  leads.forEach((lead) => {
-    const key = new Date(lead.created_at).toISOString().slice(0, 10);
+  items.forEach((item) => {
+    const key = new Date(item.created_at).toISOString().slice(0, 10);
     if (days.has(key)) {
       days.set(key, (days.get(key) ?? 0) + 1);
     }
@@ -41,13 +42,19 @@ function getSourceName(source: string | null) {
 
 export default async function AnalyticsPage() {
   const { supabase, user } = await requireUser();
-  const { data, error } = await supabase
-    .from("leads")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+  const [leadsResult, followUpsResult] = await Promise.all([
+    supabase.from("leads").select("*").eq("user_id", user.id).order("created_at", {
+      ascending: false,
+    }),
+    supabase
+      .from("follow_ups")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+  ]);
 
-  const leads = (data ?? []) as Lead[];
+  const leads = (leadsResult.data ?? []) as Lead[];
+  const followUps = (followUpsResult.data ?? []) as FollowUp[];
   const totalLeads = leads.length;
   const statusCounts = leadStatuses.reduce<Record<LeadStatus, number>>(
     (accumulator, status) => {
@@ -99,6 +106,7 @@ export default async function AnalyticsPage() {
     value: statusCounts[status],
   }));
   const trendData = buildTrendData(leads);
+  const followUpTrendData = buildTrendData(followUps);
   const recentCreated = leads.slice(0, 5);
   const recentUpdated = leads
     .filter((lead) => lead.status === "Qualified" || lead.status === "Converted")
@@ -126,9 +134,9 @@ export default async function AnalyticsPage() {
         </Link>
       </div>
 
-      {error && (
+      {(leadsResult.error || followUpsResult.error) && (
         <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200">
-          Unable to load analytics: {error.message}
+          Unable to load analytics: {leadsResult.error?.message || followUpsResult.error?.message}
         </div>
       )}
 
@@ -156,7 +164,12 @@ export default async function AnalyticsPage() {
         </section>
       ) : (
         <>
-          <AnalyticsCharts sourceData={sourceData} statusData={statusData} trendData={trendData} />
+          <AnalyticsCharts
+            followUpTrendData={followUpTrendData}
+            sourceData={sourceData}
+            statusData={statusData}
+            trendData={trendData}
+          />
 
           <div className="mt-8 grid gap-5 xl:grid-cols-[1fr_0.9fr]">
             <section className="rounded-xl border border-white/10 bg-zinc-950 p-6">

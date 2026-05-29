@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { LeadScoreBadge } from "@/components/lead-score-badge";
 import { Notification } from "@/components/notification";
 import { requireUser } from "@/lib/auth/require-user";
+import type { FollowUp } from "@/types/follow-up";
 import type { Lead } from "@/types/lead";
 import { DeleteLeadModal } from "../delete-lead-modal";
+import { FollowUpGenerator } from "./follow-up-generator";
 
 type LeadDetailsPageProps = {
   params: Promise<{ id: string }>;
@@ -18,23 +21,29 @@ export default async function LeadDetailsPage({ params, searchParams }: LeadDeta
   const { id } = await params;
   const queryParams = await searchParams;
   const { supabase, user } = await requireUser();
-  const { data } = await supabase
-    .from("leads")
-    .select("*")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .single();
+  const [leadResult, followUpsResult] = await Promise.all([
+    supabase.from("leads").select("*").eq("id", id).eq("user_id", user.id).single(),
+    supabase
+      .from("follow_ups")
+      .select("*")
+      .eq("lead_id", id)
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+  ]);
 
-  if (!data) {
+  if (!leadResult.data) {
     notFound();
   }
 
-  const lead = data as Lead;
+  const lead = leadResult.data as Lead;
+  const followUps = (followUpsResult.data ?? []) as FollowUp[];
   const details = [
     { label: "Email", value: lead.email || "-" },
     { label: "Phone", value: lead.phone || "-" },
     { label: "Source", value: lead.source || "-" },
     { label: "Status", value: lead.status },
+    { label: "AI Score", value: String(lead.lead_score ?? 0) },
+    { label: "Temperature", value: lead.lead_temperature ?? "Cold" },
     { label: "Created", value: new Date(lead.created_at).toLocaleString() },
   ];
 
@@ -48,6 +57,9 @@ export default async function LeadDetailsPage({ params, searchParams }: LeadDeta
           <h1 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">
             {lead.full_name}
           </h1>
+          <div className="mt-5">
+            <LeadScoreBadge score={lead.lead_score} temperature={lead.lead_temperature} />
+          </div>
         </div>
         <div className="flex gap-3">
           <Link
@@ -83,6 +95,8 @@ export default async function LeadDetailsPage({ params, searchParams }: LeadDeta
           </div>
         </div>
       </section>
+
+      <FollowUpGenerator followUps={followUps} lead={lead} />
     </AppShell>
   );
 }

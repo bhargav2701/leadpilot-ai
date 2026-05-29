@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { LeadScoreBadge } from "@/components/lead-score-badge";
 import { Notification } from "@/components/notification";
 import { requireUser } from "@/lib/auth/require-user";
-import type { Lead } from "@/types/lead";
-import { leadStatuses } from "@/types/lead";
+import type { Lead, LeadStatus, LeadTemperature } from "@/types/lead";
+import { leadStatuses, leadTemperatures } from "@/types/lead";
 import { DeleteLeadModal } from "./delete-lead-modal";
 
 const pageSize = 8;
@@ -13,16 +14,18 @@ type LeadsPageProps = {
     page?: string;
     q?: string;
     status?: string;
+    temperature?: string;
     sort?: string;
     success?: string;
     error?: string;
   }>;
 };
 
-function pageHref(page: number, q: string, status: string, sort: string) {
+function pageHref(page: number, q: string, status: string, temperature: string, sort: string) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (status) params.set("status", status);
+  if (temperature) params.set("temperature", temperature);
   if (sort) params.set("sort", sort);
   params.set("page", String(page));
   return `/leads?${params.toString()}`;
@@ -33,7 +36,9 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
   const params = await searchParams;
   const q = params.q?.trim() ?? "";
   const status = params.status?.trim() ?? "";
-  const sort = params.sort === "oldest" ? "oldest" : "newest";
+  const temperature = params.temperature?.trim() ?? "";
+  const sortOptions = ["newest", "oldest", "highest-score", "lowest-score"];
+  const sort = sortOptions.includes(params.sort ?? "") ? (params.sort as string) : "newest";
   const currentPage = Math.max(Number(params.page ?? "1") || 1, 1);
   const from = (currentPage - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -41,9 +46,21 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
   let query = supabase
     .from("leads")
     .select("*", { count: "exact" })
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: sort === "oldest" })
-    .range(from, to);
+    .eq("user_id", user.id);
+
+  if (sort === "highest-score") {
+    query = query.order("lead_score", { ascending: false }).order("created_at", {
+      ascending: false,
+    });
+  } else if (sort === "lowest-score") {
+    query = query.order("lead_score", { ascending: true }).order("created_at", {
+      ascending: false,
+    });
+  } else {
+    query = query.order("created_at", { ascending: sort === "oldest" });
+  }
+
+  query = query.range(from, to);
 
   if (q) {
     const term = q.replaceAll("%", "").replaceAll(",", " ");
@@ -52,8 +69,12 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
     );
   }
 
-  if (status && leadStatuses.includes(status as never)) {
+  if (status && leadStatuses.includes(status as LeadStatus)) {
     query = query.eq("status", status);
+  }
+
+  if (temperature && leadTemperatures.includes(temperature as LeadTemperature)) {
+    query = query.eq("lead_temperature", temperature);
   }
 
   const { data, count } = await query;
@@ -79,7 +100,7 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
 
       <Notification error={params.error} success={params.success} />
 
-      <form className="mt-8 grid gap-3 rounded-xl border border-white/10 bg-zinc-950 p-4 md:grid-cols-[1fr_190px_170px_auto]">
+      <form className="mt-8 grid gap-3 rounded-xl border border-white/10 bg-zinc-950 p-4 md:grid-cols-[1fr_160px_160px_180px_auto]">
         <input
           className="rounded-lg border border-white/10 bg-black px-4 py-3 text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-500"
           defaultValue={q}
@@ -100,11 +121,25 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
         </select>
         <select
           className="rounded-lg border border-white/10 bg-black px-4 py-3 text-white outline-none transition focus:border-orange-500"
+          defaultValue={temperature}
+          name="temperature"
+        >
+          <option value="">All temperatures</option>
+          {leadTemperatures.map((leadTemperature) => (
+            <option key={leadTemperature} value={leadTemperature}>
+              {leadTemperature}
+            </option>
+          ))}
+        </select>
+        <select
+          className="rounded-lg border border-white/10 bg-black px-4 py-3 text-white outline-none transition focus:border-orange-500"
           defaultValue={sort}
           name="sort"
         >
           <option value="newest">Newest First</option>
           <option value="oldest">Oldest First</option>
+          <option value="highest-score">Highest Score</option>
+          <option value="lowest-score">Lowest Score</option>
         </select>
         <button
           className="rounded-lg bg-orange-500 px-5 py-3 text-sm font-black text-black transition hover:bg-orange-400"
@@ -123,6 +158,7 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
                 <th className="px-5 py-4">Phone</th>
                 <th className="px-5 py-4">Source</th>
                 <th className="px-5 py-4">Status</th>
+                <th className="px-5 py-4">AI Score</th>
                 <th className="px-5 py-4">Created</th>
                 <th className="px-5 py-4 text-right">Actions</th>
               </tr>
@@ -145,6 +181,12 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
                     <span className="rounded-full bg-orange-500/15 px-3 py-1 text-sm font-bold text-orange-300">
                       {lead.status}
                     </span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <LeadScoreBadge
+                      score={lead.lead_score}
+                      temperature={lead.lead_temperature}
+                    />
                   </td>
                   <td className="px-5 py-4 text-zinc-400">
                     {new Date(lead.created_at).toLocaleDateString()}
@@ -183,7 +225,7 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
             className={`rounded-lg border border-white/10 px-4 py-2 text-sm font-bold ${
               currentPage <= 1 ? "pointer-events-none opacity-40" : "hover:border-orange-500/50"
             }`}
-            href={pageHref(currentPage - 1, q, status, sort)}
+            href={pageHref(currentPage - 1, q, status, temperature, sort)}
           >
             Previous
           </Link>
@@ -193,7 +235,7 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
                 ? "pointer-events-none opacity-40"
                 : "hover:border-orange-500/50"
             }`}
-            href={pageHref(currentPage + 1, q, status, sort)}
+            href={pageHref(currentPage + 1, q, status, temperature, sort)}
           >
             Next
           </Link>
