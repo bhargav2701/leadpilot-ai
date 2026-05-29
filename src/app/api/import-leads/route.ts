@@ -34,6 +34,13 @@ export async function POST(request: Request) {
   }
 
   const payload = (await request.json()) as { leads?: unknown[] };
+  const { data: membershipData } = await supabase
+    .from("team_members")
+    .select("workspace_id")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: true })
+    .limit(1);
+  const workspaceId = membershipData?.[0]?.workspace_id ?? user.id;
   const validLeads = Array.isArray(payload.leads)
     ? payload.leads.filter(isImportLeadPayload).slice(0, 10000)
     : [];
@@ -55,7 +62,7 @@ export async function POST(request: Request) {
       phone: lead.phone || null,
       source: lead.source || null,
       status: lead.status,
-      user_id: user.id,
+      user_id: workspaceId,
     }));
 
     const { error } = await supabase.from("leads").insert(batch);

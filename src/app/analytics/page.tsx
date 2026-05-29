@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { requireUser } from "@/lib/auth/require-user";
+import { getWorkspaceMembers, requireWorkspace } from "@/lib/auth/workspace";
 import type { FollowUp } from "@/types/follow-up";
 import type { Lead, LeadStatus } from "@/types/lead";
 import { leadStatuses } from "@/types/lead";
@@ -41,9 +41,9 @@ function getSourceName(source: string | null) {
 }
 
 export default async function AnalyticsPage() {
-  const { supabase, user } = await requireUser();
+  const { supabase, user, workspaceId } = await requireWorkspace();
   const [leadsResult, followUpsResult] = await Promise.all([
-    supabase.from("leads").select("*").eq("user_id", user.id).order("created_at", {
+    supabase.from("leads").select("*").eq("user_id", workspaceId).order("created_at", {
       ascending: false,
     }),
     supabase
@@ -54,6 +54,7 @@ export default async function AnalyticsPage() {
   ]);
 
   const leads = (leadsResult.data ?? []) as Lead[];
+  const members = await getWorkspaceMembers(workspaceId);
   const followUps = (followUpsResult.data ?? []) as FollowUp[];
   const totalLeads = leads.length;
   const statusCounts = leadStatuses.reduce<Record<LeadStatus, number>>(
@@ -111,6 +112,16 @@ export default async function AnalyticsPage() {
   const recentUpdated = leads
     .filter((lead) => lead.status === "Qualified" || lead.status === "Converted")
     .slice(0, 5);
+  const memberAnalytics = [
+    { role: "Owner", user_id: workspaceId },
+    ...members.filter((member) => member.user_id !== workspaceId),
+  ].map((member) => ({
+    converted: leads.filter(
+      (lead) => lead.assigned_to === member.user_id && lead.status === "Converted",
+    ).length,
+    leads: leads.filter((lead) => lead.assigned_to === member.user_id).length,
+    member,
+  }));
 
   return (
     <AppShell active="analytics" userEmail={user.email}>
@@ -249,6 +260,35 @@ export default async function AnalyticsPage() {
               </div>
             </section>
           </div>
+
+          <section className="mt-8 rounded-xl border border-white/10 bg-zinc-950 p-6">
+            <h2 className="text-2xl font-black">Analytics by Team Member</h2>
+            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {memberAnalytics.map((item) => (
+                <article className="rounded-lg border border-white/10 bg-black p-4" key={item.member.user_id}>
+                  <p className="truncate font-bold text-white">
+                    {item.member.role}: {item.member.user_id}
+                  </p>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">
+                        Leads
+                      </p>
+                      <p className="mt-1 text-2xl font-black text-orange-500">{item.leads}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">
+                        Converted
+                      </p>
+                      <p className="mt-1 text-2xl font-black text-orange-500">
+                        {item.converted}
+                      </p>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
         </>
       )}
     </AppShell>

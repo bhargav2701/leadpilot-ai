@@ -2,14 +2,22 @@ import Link from "next/link";
 import { SubmitButton } from "@/components/submit-button";
 import type { Lead } from "@/types/lead";
 import { leadStatuses } from "@/types/lead";
+import type { TeamMember } from "@/types/team";
 
 type LeadFormProps = {
   action: (formData: FormData) => Promise<void>;
   buttonLabel: string;
   lead?: Lead;
+  members?: TeamMember[];
+  ownerId?: string;
 };
 
-export function LeadForm({ action, buttonLabel, lead }: LeadFormProps) {
+export function LeadForm({ action, buttonLabel, lead, members = [], ownerId }: LeadFormProps) {
+  const assignees = [
+    ...(ownerId ? [{ id: ownerId, role: "Owner", user_id: ownerId }] : []),
+    ...members,
+  ];
+
   return (
     <form action={action} className="rounded-xl border border-white/10 bg-zinc-950 p-6">
       {lead && <input name="id" type="hidden" value={lead.id} />}
@@ -60,6 +68,21 @@ export function LeadForm({ action, buttonLabel, lead }: LeadFormProps) {
             {leadStatuses.map((status) => (
               <option key={status} value={status}>
                 {status}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block md:col-span-2">
+          <span className="text-sm font-semibold text-zinc-300">Assigned To</span>
+          <select
+            className="mt-2 w-full rounded-lg border border-white/10 bg-black px-4 py-3 text-white outline-none transition focus:border-orange-500"
+            defaultValue={lead?.assigned_to ?? ""}
+            name="assigned_to"
+          >
+            <option value="">Unassigned</option>
+            {assignees.map((member) => (
+              <option key={member.user_id} value={member.user_id}>
+                {member.role}: {member.user_id}
               </option>
             ))}
           </select>

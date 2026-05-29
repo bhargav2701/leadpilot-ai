@@ -10,6 +10,7 @@ export type Lead = {
   source: string | null;
   status: LeadStatus;
   notes: string | null;
+  assigned_to: string | null;
   lead_score: number;
   lead_temperature: LeadTemperature;
   created_at: string;

@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { Notification } from "@/components/notification";
-import { requireUser } from "@/lib/auth/require-user";
+import { getWorkspaceMembers, requireWorkspace } from "@/lib/auth/workspace";
 import { createLead } from "../actions";
 import { LeadForm } from "../lead-form";
 
@@ -12,8 +12,9 @@ type NewLeadPageProps = {
 };
 
 export default async function NewLeadPage({ searchParams }: NewLeadPageProps) {
-  const { user } = await requireUser();
+  const { user, workspaceId } = await requireWorkspace();
   const params = await searchParams;
+  const members = await getWorkspaceMembers(workspaceId);
 
   return (
     <AppShell active="leads" userEmail={user.email}>
@@ -21,7 +22,12 @@ export default async function NewLeadPage({ searchParams }: NewLeadPageProps) {
       <h1 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">Add lead</h1>
       <Notification error={params.error} success={params.success} />
       <div className="mt-8">
-        <LeadForm action={createLead} buttonLabel="Save Lead" />
+        <LeadForm
+          action={createLead}
+          buttonLabel="Save Lead"
+          members={members}
+          ownerId={workspaceId}
+        />
       </div>
     </AppShell>
   );

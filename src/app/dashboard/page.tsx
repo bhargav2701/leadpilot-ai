@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { LeadScoreBadge } from "@/components/lead-score-badge";
-import { requireUser } from "@/lib/auth/require-user";
+import { requireWorkspace } from "@/lib/auth/workspace";
 import type { FollowUp } from "@/types/follow-up";
 import type { Lead } from "@/types/lead";
 
 async function getLeadCount(
-  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  supabase: Awaited<ReturnType<typeof requireWorkspace>>["supabase"],
   userId: string,
   status?: string,
 ) {
@@ -24,7 +24,7 @@ async function getLeadCount(
 }
 
 async function getTemperatureCount(
-  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  supabase: Awaited<ReturnType<typeof requireWorkspace>>["supabase"],
   userId: string,
   temperature: string,
 ) {
@@ -38,7 +38,7 @@ async function getTemperatureCount(
 }
 
 async function getFollowUpCount(
-  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  supabase: Awaited<ReturnType<typeof requireWorkspace>>["supabase"],
   userId: string,
 ) {
   const { count } = await supabase
@@ -50,7 +50,7 @@ async function getFollowUpCount(
 }
 
 export default async function DashboardPage() {
-  const { supabase, user } = await requireUser();
+  const { supabase, user, workspaceId } = await requireWorkspace();
 
   const [
     totalLeads,
@@ -65,18 +65,18 @@ export default async function DashboardPage() {
     recentFollowUpsResult,
   ] =
     await Promise.all([
-      getLeadCount(supabase, user.id),
-      getLeadCount(supabase, user.id, "New"),
-      getLeadCount(supabase, user.id, "Qualified"),
-      getLeadCount(supabase, user.id, "Converted"),
-      getTemperatureCount(supabase, user.id, "Hot"),
-      getTemperatureCount(supabase, user.id, "Warm"),
-      getTemperatureCount(supabase, user.id, "Cold"),
+      getLeadCount(supabase, workspaceId),
+      getLeadCount(supabase, workspaceId, "New"),
+      getLeadCount(supabase, workspaceId, "Qualified"),
+      getLeadCount(supabase, workspaceId, "Converted"),
+      getTemperatureCount(supabase, workspaceId, "Hot"),
+      getTemperatureCount(supabase, workspaceId, "Warm"),
+      getTemperatureCount(supabase, workspaceId, "Cold"),
       getFollowUpCount(supabase, user.id),
       supabase
         .from("leads")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", workspaceId)
         .order("lead_score", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(5),

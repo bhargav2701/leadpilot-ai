@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth/require-user";
+import { requireWorkspace } from "@/lib/auth/workspace";
 import { leadStatuses, type LeadStatus } from "@/types/lead";
 
 function getValue(formData: FormData, key: string) {
@@ -20,15 +20,17 @@ function encodedMessage(message: string) {
 }
 
 export async function createLead(formData: FormData) {
-  const { supabase, user } = await requireUser();
+  const { supabase, workspaceId } = await requireWorkspace();
   const fullName = getValue(formData, "full_name");
+  const assignedTo = getValue(formData, "assigned_to");
 
   if (!fullName) {
     redirect(`/leads/new?error=${encodedMessage("Full name is required.")}`);
   }
 
   const { error } = await supabase.from("leads").insert({
-    user_id: user.id,
+    user_id: workspaceId,
+    assigned_to: assignedTo || null,
     full_name: fullName,
     email: getValue(formData, "email") || null,
     phone: getValue(formData, "phone") || null,
@@ -43,13 +45,16 @@ export async function createLead(formData: FormData) {
 
   revalidatePath("/dashboard");
   revalidatePath("/leads");
+  revalidatePath("/my-leads");
+  revalidatePath("/team");
   redirect(`/leads?success=${encodedMessage("Lead created successfully.")}`);
 }
 
 export async function updateLead(formData: FormData) {
-  const { supabase, user } = await requireUser();
+  const { supabase, workspaceId } = await requireWorkspace();
   const id = getValue(formData, "id");
   const fullName = getValue(formData, "full_name");
+  const assignedTo = getValue(formData, "assigned_to");
 
   if (!fullName) {
     redirect(`/leads/${id}/edit?error=${encodedMessage("Full name is required.")}`);
@@ -59,6 +64,7 @@ export async function updateLead(formData: FormData) {
     .from("leads")
     .update({
       full_name: fullName,
+      assigned_to: assignedTo || null,
       email: getValue(formData, "email") || null,
       phone: getValue(formData, "phone") || null,
       source: getValue(formData, "source") || null,
@@ -66,7 +72,7 @@ export async function updateLead(formData: FormData) {
       notes: getValue(formData, "notes") || null,
     })
     .eq("id", id)
-    .eq("user_id", user.id);
+    .eq("user_id", workspaceId);
 
   if (error) {
     redirect(`/leads/${id}/edit?error=${encodedMessage(error.message)}`);
@@ -74,15 +80,21 @@ export async function updateLead(formData: FormData) {
 
   revalidatePath("/dashboard");
   revalidatePath("/leads");
+  revalidatePath("/my-leads");
+  revalidatePath("/team");
   revalidatePath(`/leads/${id}`);
   redirect(`/leads/${id}?success=${encodedMessage("Lead updated successfully.")}`);
 }
 
 export async function deleteLead(formData: FormData) {
-  const { supabase, user } = await requireUser();
+  const { supabase, workspaceId, role } = await requireWorkspace();
   const id = getValue(formData, "id");
 
-  const { error } = await supabase.from("leads").delete().eq("id", id).eq("user_id", user.id);
+  if (role !== "Owner") {
+    redirect(`/leads?error=${encodedMessage("Only owners can delete leads.")}`);
+  }
+
+  const { error } = await supabase.from("leads").delete().eq("id", id).eq("user_id", workspaceId);
 
   if (error) {
     redirect(`/leads?error=${encodedMessage(error.message)}`);
@@ -90,5 +102,7 @@ export async function deleteLead(formData: FormData) {
 
   revalidatePath("/dashboard");
   revalidatePath("/leads");
+  revalidatePath("/my-leads");
+  revalidatePath("/team");
   redirect(`/leads?success=${encodedMessage("Lead deleted successfully.")}`);
 }

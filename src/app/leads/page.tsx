@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { LeadScoreBadge } from "@/components/lead-score-badge";
 import { Notification } from "@/components/notification";
-import { requireUser } from "@/lib/auth/require-user";
+import { getWorkspaceMembers, requireWorkspace } from "@/lib/auth/workspace";
 import type { Lead, LeadStatus, LeadTemperature } from "@/types/lead";
 import { leadStatuses, leadTemperatures } from "@/types/lead";
 import { DeleteLeadModal } from "./delete-lead-modal";
@@ -15,28 +15,39 @@ type LeadsPageProps = {
     q?: string;
     status?: string;
     temperature?: string;
+    assigned?: string;
     sort?: string;
     success?: string;
     error?: string;
   }>;
 };
 
-function pageHref(page: number, q: string, status: string, temperature: string, sort: string) {
+function pageHref(
+  page: number,
+  q: string,
+  status: string,
+  temperature: string,
+  assigned: string,
+  sort: string,
+) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (status) params.set("status", status);
   if (temperature) params.set("temperature", temperature);
+  if (assigned) params.set("assigned", assigned);
   if (sort) params.set("sort", sort);
   params.set("page", String(page));
   return `/leads?${params.toString()}`;
 }
 
 export default async function LeadsPage({ searchParams }: LeadsPageProps) {
-  const { supabase, user } = await requireUser();
+  const { supabase, user, workspaceId } = await requireWorkspace();
   const params = await searchParams;
   const q = params.q?.trim() ?? "";
   const status = params.status?.trim() ?? "";
   const temperature = params.temperature?.trim() ?? "";
+  const assigned = params.assigned?.trim() ?? "";
+  const assignedFilter = assigned === "me" ? user.id : assigned;
   const sortOptions = ["newest", "oldest", "highest-score", "lowest-score"];
   const sort = sortOptions.includes(params.sort ?? "") ? (params.sort as string) : "newest";
   const currentPage = Math.max(Number(params.page ?? "1") || 1, 1);
@@ -46,7 +57,7 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
   let query = supabase
     .from("leads")
     .select("*", { count: "exact" })
-    .eq("user_id", user.id);
+    .eq("user_id", workspaceId);
 
   if (sort === "highest-score") {
     query = query.order("lead_score", { ascending: false }).order("created_at", {
@@ -77,14 +88,26 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
     query = query.eq("lead_temperature", temperature);
   }
 
+  if (assignedFilter === "unassigned") {
+    query = query.is("assigned_to", null);
+  } else if (assignedFilter) {
+    query = query.eq("assigned_to", assignedFilter);
+  }
+
   const { data, count } = await query;
   const leads = (data ?? []) as Lead[];
   const totalPages = Math.max(Math.ceil((count ?? 0) / pageSize), 1);
+  const members = await getWorkspaceMembers(workspaceId);
+  const assignees = [
+    { role: "Owner", user_id: workspaceId },
+    ...members.filter((member) => member.user_id !== workspaceId),
+  ];
 
   return (
     <AppShell active="leads" userEmail={user.email}>
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+      <div className="w-full max-w-full min-w-0">
+      <div className="flex w-full max-w-full min-w-0 flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
           <p className="text-sm font-bold uppercase tracking-[0.2em] text-orange-400">Leads</p>
           <h1 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">
             Lead management
@@ -100,15 +123,15 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
 
       <Notification error={params.error} success={params.success} />
 
-      <form className="mt-8 grid gap-3 rounded-xl border border-white/10 bg-zinc-950 p-4 md:grid-cols-[1fr_160px_160px_180px_auto]">
+      <form className="mt-8 grid w-full max-w-full min-w-0 gap-3 rounded-xl border border-white/10 bg-zinc-950 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,150px)_minmax(0,150px)_minmax(0,170px)_minmax(0,170px)_auto]">
         <input
-          className="rounded-lg border border-white/10 bg-black px-4 py-3 text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-500"
+          className="min-w-0 rounded-lg border border-white/10 bg-black px-4 py-3 text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-500"
           defaultValue={q}
           name="q"
           placeholder="Search by name, email, or phone"
         />
         <select
-          className="rounded-lg border border-white/10 bg-black px-4 py-3 text-white outline-none transition focus:border-orange-500"
+          className="min-w-0 rounded-lg border border-white/10 bg-black px-4 py-3 text-white outline-none transition focus:border-orange-500"
           defaultValue={status}
           name="status"
         >
@@ -120,7 +143,21 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
           ))}
         </select>
         <select
-          className="rounded-lg border border-white/10 bg-black px-4 py-3 text-white outline-none transition focus:border-orange-500"
+          className="min-w-0 rounded-lg border border-white/10 bg-black px-4 py-3 text-white outline-none transition focus:border-orange-500"
+          defaultValue={assigned}
+          name="assigned"
+        >
+          <option value="">All assignees</option>
+          <option value="me">My leads</option>
+          <option value="unassigned">Unassigned</option>
+          {assignees.map((member) => (
+            <option key={member.user_id} value={member.user_id}>
+              {member.role}: {member.user_id}
+            </option>
+          ))}
+        </select>
+        <select
+          className="min-w-0 rounded-lg border border-white/10 bg-black px-4 py-3 text-white outline-none transition focus:border-orange-500"
           defaultValue={temperature}
           name="temperature"
         >
@@ -132,7 +169,7 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
           ))}
         </select>
         <select
-          className="rounded-lg border border-white/10 bg-black px-4 py-3 text-white outline-none transition focus:border-orange-500"
+          className="min-w-0 rounded-lg border border-white/10 bg-black px-4 py-3 text-white outline-none transition focus:border-orange-500"
           defaultValue={sort}
           name="sort"
         >
@@ -149,52 +186,60 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
         </button>
       </form>
 
-      <section className="mt-6 overflow-hidden rounded-xl border border-white/10 bg-zinc-950">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left">
+      <section className="mt-6 w-full max-w-full min-w-0 overflow-hidden rounded-xl border border-white/10 bg-zinc-950">
+        <div className="w-full max-w-full min-w-0 overflow-x-auto">
+          <table className="w-full min-w-[720px] table-fixed text-left">
             <thead className="border-b border-white/10 bg-white/[0.03] text-xs uppercase tracking-[0.16em] text-zinc-500">
               <tr>
-                <th className="px-5 py-4">Lead</th>
-                <th className="px-5 py-4">Phone</th>
-                <th className="px-5 py-4">Source</th>
-                <th className="px-5 py-4">Status</th>
-                <th className="px-5 py-4">AI Score</th>
-                <th className="px-5 py-4">Created</th>
-                <th className="px-5 py-4 text-right">Actions</th>
+                <th className="w-[190px] px-4 py-4">Lead</th>
+                <th className="w-[120px] px-4 py-4">Phone</th>
+                <th className="w-[120px] px-4 py-4">Source</th>
+                <th className="w-[110px] px-4 py-4">Status</th>
+                <th className="w-[145px] px-4 py-4">AI Score</th>
+                <th className="w-[145px] px-4 py-4">Assigned</th>
+                <th className="w-[110px] px-4 py-4">Created</th>
+                <th className="w-[125px] px-4 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
               {leads.map((lead) => (
                 <tr className="transition hover:bg-white/[0.03]" key={lead.id}>
-                  <td className="px-5 py-4">
+                  <td className="min-w-0 px-4 py-4">
                     <Link
-                      className="font-bold text-white hover:text-orange-300"
+                      className="block truncate font-bold text-white hover:text-orange-300"
                       href={`/leads/${lead.id}`}
                     >
                       {lead.full_name}
                     </Link>
-                    <p className="mt-1 text-sm text-zinc-500">{lead.email || "No email"}</p>
+                    <p className="mt-1 truncate text-sm text-zinc-500">{lead.email || "No email"}</p>
                   </td>
-                  <td className="px-5 py-4 text-zinc-300">{lead.phone || "-"}</td>
-                  <td className="px-5 py-4 text-zinc-300">{lead.source || "-"}</td>
-                  <td className="px-5 py-4">
+                  <td className="truncate px-4 py-4 text-zinc-300">{lead.phone || "-"}</td>
+                  <td className="truncate px-4 py-4 text-zinc-300">{lead.source || "-"}</td>
+                  <td className="px-4 py-4">
                     <span className="rounded-full bg-orange-500/15 px-3 py-1 text-sm font-bold text-orange-300">
                       {lead.status}
                     </span>
                   </td>
-                  <td className="px-5 py-4">
+                  <td className="px-4 py-4">
                     <LeadScoreBadge
                       score={lead.lead_score}
                       temperature={lead.lead_temperature}
                     />
                   </td>
-                  <td className="px-5 py-4 text-zinc-400">
+                  <td className="truncate px-4 py-4 text-zinc-400">
+                    {lead.assigned_to
+                      ? lead.assigned_to === workspaceId
+                        ? "Owner"
+                        : lead.assigned_to
+                      : "Unassigned"}
+                  </td>
+                  <td className="truncate px-4 py-4 text-zinc-400">
                     {new Date(lead.created_at).toLocaleDateString()}
                   </td>
-                  <td className="px-5 py-4">
-                    <div className="flex justify-end gap-2">
+                  <td className="px-4 py-4">
+                    <div className="flex min-w-0 justify-end gap-2">
                       <Link
-                        className="rounded-lg border border-white/10 px-3 py-2 text-sm font-bold text-zinc-300 transition hover:border-orange-500/50 hover:text-orange-300"
+                        className="rounded-lg border border-white/10 px-2.5 py-2 text-sm font-bold text-zinc-300 transition hover:border-orange-500/50 hover:text-orange-300"
                         href={`/leads/${lead.id}/edit`}
                       >
                         Edit
@@ -216,16 +261,16 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
         )}
       </section>
 
-      <div className="mt-6 flex items-center justify-between">
+      <div className="mt-6 flex w-full max-w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-zinc-500">
           Page {currentPage} of {totalPages}
         </p>
-        <div className="flex gap-2">
+        <div className="flex min-w-0 gap-2">
           <Link
             className={`rounded-lg border border-white/10 px-4 py-2 text-sm font-bold ${
               currentPage <= 1 ? "pointer-events-none opacity-40" : "hover:border-orange-500/50"
             }`}
-            href={pageHref(currentPage - 1, q, status, temperature, sort)}
+            href={pageHref(currentPage - 1, q, status, temperature, assigned, sort)}
           >
             Previous
           </Link>
@@ -235,11 +280,12 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
                 ? "pointer-events-none opacity-40"
                 : "hover:border-orange-500/50"
             }`}
-            href={pageHref(currentPage + 1, q, status, temperature, sort)}
+            href={pageHref(currentPage + 1, q, status, temperature, assigned, sort)}
           >
             Next
           </Link>
         </div>
+      </div>
       </div>
     </AppShell>
   );

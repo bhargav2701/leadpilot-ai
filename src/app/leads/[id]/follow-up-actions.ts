@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth/require-user";
+import { requireWorkspace } from "@/lib/auth/workspace";
 import { followUpTones, type FollowUpTone } from "@/types/follow-up";
 import type { Lead } from "@/types/lead";
 
@@ -89,13 +89,13 @@ Tone: ${tone}`,
 export async function generateFollowUp(formData: FormData) {
   const leadId = getValue(formData, "lead_id");
   const tone = getTone(formData);
-  const { supabase, user } = await requireUser();
+  const { supabase, user, workspaceId } = await requireWorkspace();
 
   const { data: leadData } = await supabase
     .from("leads")
     .select("*")
     .eq("id", leadId)
-    .eq("user_id", user.id)
+    .eq("user_id", workspaceId)
     .single();
 
   if (!leadData) {

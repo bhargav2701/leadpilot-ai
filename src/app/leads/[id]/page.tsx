@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { LeadScoreBadge } from "@/components/lead-score-badge";
 import { Notification } from "@/components/notification";
-import { requireUser } from "@/lib/auth/require-user";
+import { requireWorkspace } from "@/lib/auth/workspace";
 import type { FollowUp } from "@/types/follow-up";
 import type { Lead } from "@/types/lead";
 import { DeleteLeadModal } from "../delete-lead-modal";
@@ -20,14 +20,13 @@ type LeadDetailsPageProps = {
 export default async function LeadDetailsPage({ params, searchParams }: LeadDetailsPageProps) {
   const { id } = await params;
   const queryParams = await searchParams;
-  const { supabase, user } = await requireUser();
+  const { supabase, user, workspaceId } = await requireWorkspace();
   const [leadResult, followUpsResult] = await Promise.all([
-    supabase.from("leads").select("*").eq("id", id).eq("user_id", user.id).single(),
+    supabase.from("leads").select("*").eq("id", id).eq("user_id", workspaceId).single(),
     supabase
       .from("follow_ups")
       .select("*")
       .eq("lead_id", id)
-      .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
   ]);
 
@@ -44,6 +43,7 @@ export default async function LeadDetailsPage({ params, searchParams }: LeadDeta
     { label: "Status", value: lead.status },
     { label: "AI Score", value: String(lead.lead_score ?? 0) },
     { label: "Temperature", value: lead.lead_temperature ?? "Cold" },
+    { label: "Assigned To", value: lead.assigned_to || "Unassigned" },
     { label: "Created", value: new Date(lead.created_at).toLocaleString() },
   ];
 

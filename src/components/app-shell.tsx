@@ -2,7 +2,7 @@ import Link from "next/link";
 import { logOut } from "@/app/auth/actions";
 
 type AppShellProps = {
-  active: "dashboard" | "leads" | "import" | "analytics" | "settings";
+  active: "dashboard" | "leads" | "my-leads" | "import" | "team" | "analytics" | "settings";
   children: React.ReactNode;
   userEmail?: string | null;
 };
@@ -10,7 +10,9 @@ type AppShellProps = {
 const navItems = [
   { label: "Dashboard", href: "/dashboard", key: "dashboard" },
   { label: "Leads", href: "/leads", key: "leads" },
+  { label: "My Leads", href: "/my-leads", key: "my-leads" },
   { label: "Import Leads", href: "/import", key: "import" },
+  { label: "Team", href: "/team", key: "team" },
   { label: "Analytics", href: "/analytics", key: "analytics" },
   { label: "Settings", href: "/settings", key: "settings" },
 ] as const;
