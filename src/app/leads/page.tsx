@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { Notification } from "@/components/notification";
 import { requireUser } from "@/lib/auth/require-user";
 import type { Lead } from "@/types/lead";
 import { leadStatuses } from "@/types/lead";
@@ -12,13 +13,17 @@ type LeadsPageProps = {
     page?: string;
     q?: string;
     status?: string;
+    sort?: string;
+    success?: string;
+    error?: string;
   }>;
 };
 
-function pageHref(page: number, q: string, status: string) {
+function pageHref(page: number, q: string, status: string, sort: string) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (status) params.set("status", status);
+  if (sort) params.set("sort", sort);
   params.set("page", String(page));
   return `/leads?${params.toString()}`;
 }
@@ -28,6 +33,7 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
   const params = await searchParams;
   const q = params.q?.trim() ?? "";
   const status = params.status?.trim() ?? "";
+  const sort = params.sort === "oldest" ? "oldest" : "newest";
   const currentPage = Math.max(Number(params.page ?? "1") || 1, 1);
   const from = (currentPage - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -36,13 +42,13 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
     .from("leads")
     .select("*", { count: "exact" })
     .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
+    .order("created_at", { ascending: sort === "oldest" })
     .range(from, to);
 
   if (q) {
     const term = q.replaceAll("%", "").replaceAll(",", " ");
     query = query.or(
-      `full_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%,source.ilike.%${term}%`,
+      `full_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`,
     );
   }
 
@@ -71,12 +77,14 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
         </Link>
       </div>
 
-      <form className="mt-8 grid gap-3 rounded-xl border border-white/10 bg-zinc-950 p-4 md:grid-cols-[1fr_220px_auto]">
+      <Notification error={params.error} success={params.success} />
+
+      <form className="mt-8 grid gap-3 rounded-xl border border-white/10 bg-zinc-950 p-4 md:grid-cols-[1fr_190px_170px_auto]">
         <input
           className="rounded-lg border border-white/10 bg-black px-4 py-3 text-white outline-none transition placeholder:text-zinc-600 focus:border-orange-500"
           defaultValue={q}
           name="q"
-          placeholder="Search by name, email, phone, or source"
+          placeholder="Search by name, email, or phone"
         />
         <select
           className="rounded-lg border border-white/10 bg-black px-4 py-3 text-white outline-none transition focus:border-orange-500"
@@ -89,6 +97,14 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
               {leadStatus}
             </option>
           ))}
+        </select>
+        <select
+          className="rounded-lg border border-white/10 bg-black px-4 py-3 text-white outline-none transition focus:border-orange-500"
+          defaultValue={sort}
+          name="sort"
+        >
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
         </select>
         <button
           className="rounded-lg bg-orange-500 px-5 py-3 text-sm font-black text-black transition hover:bg-orange-400"
@@ -115,7 +131,10 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
               {leads.map((lead) => (
                 <tr className="transition hover:bg-white/[0.03]" key={lead.id}>
                   <td className="px-5 py-4">
-                    <Link className="font-bold text-white hover:text-orange-300" href={`/leads/${lead.id}`}>
+                    <Link
+                      className="font-bold text-white hover:text-orange-300"
+                      href={`/leads/${lead.id}`}
+                    >
                       {lead.full_name}
                     </Link>
                     <p className="mt-1 text-sm text-zinc-500">{lead.email || "No email"}</p>
@@ -164,15 +183,17 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
             className={`rounded-lg border border-white/10 px-4 py-2 text-sm font-bold ${
               currentPage <= 1 ? "pointer-events-none opacity-40" : "hover:border-orange-500/50"
             }`}
-            href={pageHref(currentPage - 1, q, status)}
+            href={pageHref(currentPage - 1, q, status, sort)}
           >
             Previous
           </Link>
           <Link
             className={`rounded-lg border border-white/10 px-4 py-2 text-sm font-bold ${
-              currentPage >= totalPages ? "pointer-events-none opacity-40" : "hover:border-orange-500/50"
+              currentPage >= totalPages
+                ? "pointer-events-none opacity-40"
+                : "hover:border-orange-500/50"
             }`}
-            href={pageHref(currentPage + 1, q, status)}
+            href={pageHref(currentPage + 1, q, status, sort)}
           >
             Next
           </Link>

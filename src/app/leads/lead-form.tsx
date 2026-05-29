@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SubmitButton } from "@/components/submit-button";
 import type { Lead } from "@/types/lead";
 import { leadStatuses } from "@/types/lead";
 
@@ -80,12 +81,12 @@ export function LeadForm({ action, buttonLabel, lead }: LeadFormProps) {
         >
           Cancel
         </Link>
-        <button
-          className="rounded-lg bg-orange-500 px-5 py-3 text-sm font-black text-black transition hover:bg-orange-400"
-          type="submit"
+        <SubmitButton
+          className="rounded-lg bg-orange-500 px-5 py-3 text-sm font-black text-black transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
+          pendingLabel="Saving lead..."
         >
           {buttonLabel}
-        </button>
+        </SubmitButton>
       </div>
     </form>
   );

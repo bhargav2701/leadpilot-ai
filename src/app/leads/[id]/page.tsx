@@ -1,16 +1,22 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { Notification } from "@/components/notification";
 import { requireUser } from "@/lib/auth/require-user";
 import type { Lead } from "@/types/lead";
 import { DeleteLeadModal } from "../delete-lead-modal";
 
 type LeadDetailsPageProps = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{
+    error?: string;
+    success?: string;
+  }>;
 };
 
-export default async function LeadDetailsPage({ params }: LeadDetailsPageProps) {
+export default async function LeadDetailsPage({ params, searchParams }: LeadDetailsPageProps) {
   const { id } = await params;
+  const queryParams = await searchParams;
   const { supabase, user } = await requireUser();
   const { data } = await supabase
     .from("leads")
@@ -53,6 +59,8 @@ export default async function LeadDetailsPage({ params }: LeadDetailsPageProps) 
           <DeleteLeadModal id={lead.id} name={lead.full_name} />
         </div>
       </div>
+
+      <Notification error={queryParams.error} success={queryParams.success} />
 
       <section className="mt-8 grid gap-5 lg:grid-cols-[1fr_0.8fr]">
         <div className="rounded-xl border border-white/10 bg-zinc-950 p-6">

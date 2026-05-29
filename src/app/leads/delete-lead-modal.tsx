@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SubmitButton } from "@/components/submit-button";
 import { deleteLead } from "./actions";
 
 type DeleteLeadModalProps = {
@@ -38,12 +39,12 @@ export function DeleteLeadModal({ id, name }: DeleteLeadModalProps) {
               </button>
               <form action={deleteLead}>
                 <input name="id" type="hidden" value={id} />
-                <button
-                  className="w-full rounded-lg bg-red-500 px-5 py-3 text-sm font-black text-white transition hover:bg-red-400"
-                  type="submit"
+                <SubmitButton
+                  className="w-full rounded-lg bg-red-500 px-5 py-3 text-sm font-black text-white transition hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  pendingLabel="Deleting..."
                 >
                   Delete Lead
-                </button>
+                </SubmitButton>
               </form>
             </div>
           </div>
