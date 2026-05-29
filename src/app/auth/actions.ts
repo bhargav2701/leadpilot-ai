@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createWritableClient } from "@/lib/supabase/server";
 
 type AuthState = {
   message: string;
@@ -16,7 +16,7 @@ function getFormValue(formData: FormData, key: string) {
 export async function signUp(_state: AuthState, formData: FormData): Promise<AuthState> {
   const email = getFormValue(formData, "email");
   const password = getFormValue(formData, "password");
-  const supabase = await createClient();
+  const supabase = await createWritableClient();
 
   const { error } = await supabase.auth.signUp({
     email,
@@ -36,7 +36,7 @@ export async function signUp(_state: AuthState, formData: FormData): Promise<Aut
 export async function logIn(_state: AuthState, formData: FormData): Promise<AuthState> {
   const email = getFormValue(formData, "email");
   const password = getFormValue(formData, "password");
-  const supabase = await createClient();
+  const supabase = await createWritableClient();
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -54,7 +54,7 @@ export async function forgotPassword(
 ): Promise<AuthState> {
   const email = getFormValue(formData, "email");
   const origin = getFormValue(formData, "origin");
-  const supabase = await createClient();
+  const supabase = await createWritableClient();
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${origin}/auth/callback?next=/dashboard`,
@@ -68,7 +68,7 @@ export async function forgotPassword(
 }
 
 export async function logOut() {
-  const supabase = await createClient();
+  const supabase = await createWritableClient();
 
   await supabase.auth.signOut();
 

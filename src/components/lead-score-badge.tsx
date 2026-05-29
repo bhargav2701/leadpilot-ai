@@ -10,11 +10,11 @@ function getTemperature(score: number, temperature?: string | null) {
     return temperature;
   }
 
-  if (score >= 80) {
+  if (score >= 75) {
     return "Hot";
   }
 
-  if (score >= 50) {
+  if (score >= 40) {
     return "Warm";
   }
 
