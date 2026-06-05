@@ -62,10 +62,12 @@ export default async function AnalyticsPage() {
       accumulator[status] = leads.filter((lead) => lead.status === status).length;
       return accumulator;
     },
-    { New: 0, Qualified: 0, Converted: 0, Lost: 0 },
+    { Converted: 0, Lost: 0, New: 0, Proposal: 0, Qualified: 0, Won: 0 },
   );
+  statusCounts.Converted = leads.filter((lead) => lead.status === "Converted").length;
+  const wonLeadCount = statusCounts.Won + statusCounts.Converted;
   const conversionRate = totalLeads
-    ? Math.round((statusCounts.Converted / totalLeads) * 1000) / 10
+    ? Math.round((wonLeadCount / totalLeads) * 1000) / 10
     : 0;
 
   const sourceCounts = leads.reduce<Record<string, { converted: number; leads: number }>>(
@@ -73,7 +75,7 @@ export default async function AnalyticsPage() {
       const source = getSourceName(lead.source);
       accumulator[source] = accumulator[source] ?? { converted: 0, leads: 0 };
       accumulator[source].leads += 1;
-      if (lead.status === "Converted") {
+      if (lead.status === "Won" || lead.status === "Converted") {
         accumulator[source].converted += 1;
       }
       return accumulator;
@@ -98,7 +100,7 @@ export default async function AnalyticsPage() {
     { label: "Total Leads", value: totalLeads },
     { label: "New Leads", value: statusCounts.New },
     { label: "Qualified Leads", value: statusCounts.Qualified },
-    { label: "Converted Leads", value: statusCounts.Converted },
+    { label: "Won Leads", value: wonLeadCount },
     { label: "Conversion Rate", value: `${conversionRate}%` },
   ];
 
@@ -110,14 +112,16 @@ export default async function AnalyticsPage() {
   const followUpTrendData = buildTrendData(followUps);
   const recentCreated = leads.slice(0, 5);
   const recentUpdated = leads
-    .filter((lead) => lead.status === "Qualified" || lead.status === "Converted")
+    .filter((lead) => ["Qualified", "Proposal", "Won", "Converted"].includes(lead.status))
     .slice(0, 5);
   const memberAnalytics = [
     { role: "Owner", user_id: workspaceId },
     ...members.filter((member) => member.user_id !== workspaceId),
   ].map((member) => ({
     converted: leads.filter(
-      (lead) => lead.assigned_to === member.user_id && lead.status === "Converted",
+      (lead) =>
+        lead.assigned_to === member.user_id &&
+        (lead.status === "Won" || lead.status === "Converted"),
     ).length,
     leads: leads.filter((lead) => lead.assigned_to === member.user_id).length,
     member,
@@ -252,7 +256,7 @@ export default async function AnalyticsPage() {
                     Conversion summary
                   </p>
                   <p className="mt-2 leading-7 text-zinc-300">
-                    {statusCounts.Converted} of {totalLeads} leads converted, producing a{" "}
+                    {wonLeadCount} of {totalLeads} leads won, producing a{" "}
                     <span className="font-bold text-orange-300">{conversionRate}%</span>{" "}
                     conversion rate.
                   </p>
@@ -278,7 +282,7 @@ export default async function AnalyticsPage() {
                     </div>
                     <div>
                       <p className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">
-                        Converted
+                        Won
                       </p>
                       <p className="mt-1 text-2xl font-black text-orange-500">
                         {item.converted}

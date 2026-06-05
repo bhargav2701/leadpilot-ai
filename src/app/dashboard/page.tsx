@@ -91,7 +91,7 @@ export default async function DashboardPage() {
     totalLeads,
     newLeads,
     qualifiedLeads,
-    convertedLeads,
+    wonLeads,
     hotLeads,
     warmLeads,
     coldLeads,
@@ -106,7 +106,7 @@ export default async function DashboardPage() {
       getLeadCount(supabase, workspaceId),
       getLeadCount(supabase, workspaceId, "New"),
       getLeadCount(supabase, workspaceId, "Qualified"),
-      getLeadCount(supabase, workspaceId, "Converted"),
+      getLeadCount(supabase, workspaceId, "Won"),
       getTemperatureCount(supabase, workspaceId, "Hot"),
       getTemperatureCount(supabase, workspaceId, "Warm"),
       getTemperatureCount(supabase, workspaceId, "Cold"),
@@ -135,7 +135,7 @@ export default async function DashboardPage() {
     { label: "Total Leads", value: totalLeads },
     { label: "New Leads", value: newLeads },
     { label: "Qualified Leads", value: qualifiedLeads },
-    { label: "Converted Leads", value: convertedLeads },
+    { label: "Won Leads", value: wonLeads },
   ];
   const temperatureStats = [
     { href: "/leads?temperature=Hot&sort=highest-score", label: "Hot Leads", value: hotLeads },
