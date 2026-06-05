@@ -5,7 +5,9 @@ export type ActivityType =
   | "Lead Assigned"
   | "Status Changed"
   | "Follow-Up Generated"
-  | "CSV Import";
+  | "CSV Import"
+  | "Reminder Created"
+  | "Reminder Completed";
 
 export type ActivityLog = {
   id: string;

@@ -49,6 +49,41 @@ async function getFollowUpCount(
   return count ?? 0;
 }
 
+async function getReminderCount(
+  supabase: Awaited<ReturnType<typeof requireWorkspace>>["supabase"],
+  userId: string,
+  filter: "overdue" | "today" | "upcoming",
+) {
+  const now = new Date();
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+  let query = supabase
+    .from("reminders")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("completed", false);
+
+  if (filter === "overdue") {
+    query = query.lt("reminder_date", now.toISOString());
+  }
+
+  if (filter === "today") {
+    query = query
+      .gte("reminder_date", startOfToday.toISOString())
+      .lt("reminder_date", startOfTomorrow.toISOString());
+  }
+
+  if (filter === "upcoming") {
+    query = query.gte("reminder_date", startOfTomorrow.toISOString());
+  }
+
+  const { count } = await query;
+  return count ?? 0;
+}
+
 export default async function DashboardPage() {
   const { supabase, user, workspaceId } = await requireWorkspace();
 
@@ -61,6 +96,9 @@ export default async function DashboardPage() {
     warmLeads,
     coldLeads,
     totalFollowUps,
+    overdueReminders,
+    dueTodayReminders,
+    upcomingReminders,
     recentResult,
     recentFollowUpsResult,
   ] =
@@ -73,6 +111,9 @@ export default async function DashboardPage() {
       getTemperatureCount(supabase, workspaceId, "Warm"),
       getTemperatureCount(supabase, workspaceId, "Cold"),
       getFollowUpCount(supabase, user.id),
+      getReminderCount(supabase, workspaceId, "overdue"),
+      getReminderCount(supabase, workspaceId, "today"),
+      getReminderCount(supabase, workspaceId, "upcoming"),
       supabase
         .from("leads")
         .select("*")
@@ -101,6 +142,11 @@ export default async function DashboardPage() {
     { href: "/leads?temperature=Warm&sort=highest-score", label: "Warm Leads", value: warmLeads },
     { href: "/leads?temperature=Cold&sort=highest-score", label: "Cold Leads", value: coldLeads },
   ];
+  const reminderStats = [
+    { href: "/reminders?filter=overdue", label: "Overdue", value: overdueReminders },
+    { href: "/reminders?filter=today", label: "Due Today", value: dueTodayReminders },
+    { href: "/reminders?filter=upcoming", label: "Upcoming", value: upcomingReminders },
+  ];
 
   return (
     <AppShell active="dashboard" userEmail={user.email}>
@@ -124,6 +170,20 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
+      {overdueReminders > 0 && (
+        <Link
+          className="mt-8 block rounded-xl border border-red-500/30 bg-red-500/10 p-5 transition hover:border-red-400/60 hover:bg-red-500/15"
+          href="/reminders?filter=overdue"
+        >
+          <p className="text-sm font-bold uppercase tracking-[0.16em] text-red-300">
+            Reminder Alert
+          </p>
+          <p className="mt-2 text-2xl font-black text-white">
+            {overdueReminders} overdue reminder{overdueReminders === 1 ? "" : "s"} need attention
+          </p>
+        </Link>
+      )}
+
       <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (
           <article className="rounded-xl border border-white/10 bg-zinc-950 p-6" key={stat.label}>
@@ -134,6 +194,34 @@ export default async function DashboardPage() {
           </article>
         ))}
       </div>
+
+      <section className="mt-5 rounded-xl border border-white/10 bg-zinc-950 p-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-orange-400">
+              Reminder Summary
+            </p>
+            <h2 className="mt-2 text-2xl font-black">Smart follow-up reminders</h2>
+          </div>
+          <Link className="text-sm font-bold text-orange-400 hover:text-orange-300" href="/reminders">
+            View reminders
+          </Link>
+        </div>
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          {reminderStats.map((stat) => (
+            <Link
+              className="rounded-lg border border-white/10 bg-black p-5 transition hover:border-orange-500/50"
+              href={stat.href}
+              key={stat.label}
+            >
+              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                {stat.label}
+              </p>
+              <p className="mt-3 text-4xl font-black text-orange-500">{stat.value}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       <div className="mt-5 grid gap-5 md:grid-cols-3">
         {temperatureStats.map((stat) => (
