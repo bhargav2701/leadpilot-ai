@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireWorkspace } from "@/lib/auth/workspace";
+import type { ActivityType } from "@/types/activity-log";
+import type { Lead } from "@/types/lead";
 import { leadStatuses, type LeadStatus } from "@/types/lead";
 
 function getValue(formData: FormData, key: string) {
@@ -19,6 +21,27 @@ function encodedMessage(message: string) {
   return encodeURIComponent(message);
 }
 
+async function logActivity({
+  activityType,
+  description,
+  leadId,
+  supabase,
+  workspaceId,
+}: {
+  activityType: ActivityType;
+  description: string;
+  leadId: string | null;
+  supabase: Awaited<ReturnType<typeof requireWorkspace>>["supabase"];
+  workspaceId: string;
+}) {
+  await supabase.from("activity_logs").insert({
+    activity_type: activityType,
+    description,
+    lead_id: leadId,
+    user_id: workspaceId,
+  });
+}
+
 export async function createLead(formData: FormData) {
   const { supabase, workspaceId } = await requireWorkspace();
   const fullName = getValue(formData, "full_name");
@@ -28,19 +51,43 @@ export async function createLead(formData: FormData) {
     redirect(`/leads/new?error=${encodedMessage("Full name is required.")}`);
   }
 
-  const { error } = await supabase.from("leads").insert({
-    user_id: workspaceId,
-    assigned_to: assignedTo || null,
-    full_name: fullName,
-    email: getValue(formData, "email") || null,
-    phone: getValue(formData, "phone") || null,
-    source: getValue(formData, "source") || null,
-    status: getStatus(formData),
-    notes: getValue(formData, "notes") || null,
-  });
+  const { data, error } = await supabase
+    .from("leads")
+    .insert({
+      user_id: workspaceId,
+      assigned_to: assignedTo || null,
+      full_name: fullName,
+      email: getValue(formData, "email") || null,
+      phone: getValue(formData, "phone") || null,
+      source: getValue(formData, "source") || null,
+      status: getStatus(formData),
+      notes: getValue(formData, "notes") || null,
+    })
+    .select("id, full_name, assigned_to")
+    .single();
 
   if (error) {
     redirect(`/leads/new?error=${encodedMessage(error.message)}`);
+  }
+
+  if (data) {
+    await logActivity({
+      activityType: "Lead Created",
+      description: `Created lead ${data.full_name}.`,
+      leadId: data.id,
+      supabase,
+      workspaceId,
+    });
+
+    if (data.assigned_to) {
+      await logActivity({
+        activityType: "Lead Assigned",
+        description: `Assigned ${data.full_name}.`,
+        leadId: data.id,
+        supabase,
+        workspaceId,
+      });
+    }
   }
 
   revalidatePath("/dashboard");
@@ -55,10 +102,18 @@ export async function updateLead(formData: FormData) {
   const id = getValue(formData, "id");
   const fullName = getValue(formData, "full_name");
   const assignedTo = getValue(formData, "assigned_to");
+  const status = getStatus(formData);
 
   if (!fullName) {
     redirect(`/leads/${id}/edit?error=${encodedMessage("Full name is required.")}`);
   }
+
+  const { data: existingLead } = await supabase
+    .from("leads")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", workspaceId)
+    .maybeSingle();
 
   const { error } = await supabase
     .from("leads")
@@ -68,7 +123,7 @@ export async function updateLead(formData: FormData) {
       email: getValue(formData, "email") || null,
       phone: getValue(formData, "phone") || null,
       source: getValue(formData, "source") || null,
-      status: getStatus(formData),
+      status,
       notes: getValue(formData, "notes") || null,
     })
     .eq("id", id)
@@ -76,6 +131,36 @@ export async function updateLead(formData: FormData) {
 
   if (error) {
     redirect(`/leads/${id}/edit?error=${encodedMessage(error.message)}`);
+  }
+
+  const previousLead = existingLead as Lead | null;
+
+  await logActivity({
+    activityType: "Lead Updated",
+    description: `Updated lead ${fullName}.`,
+    leadId: id,
+    supabase,
+    workspaceId,
+  });
+
+  if (previousLead && previousLead.status !== status) {
+    await logActivity({
+      activityType: "Status Changed",
+      description: `Changed status from ${previousLead.status} to ${status}.`,
+      leadId: id,
+      supabase,
+      workspaceId,
+    });
+  }
+
+  if (previousLead && (previousLead.assigned_to ?? "") !== assignedTo) {
+    await logActivity({
+      activityType: "Lead Assigned",
+      description: assignedTo ? `Assigned ${fullName}.` : `Unassigned ${fullName}.`,
+      leadId: id,
+      supabase,
+      workspaceId,
+    });
   }
 
   revalidatePath("/dashboard");
@@ -93,6 +178,21 @@ export async function deleteLead(formData: FormData) {
   if (role !== "Owner") {
     redirect(`/leads?error=${encodedMessage("Only owners can delete leads.")}`);
   }
+
+  const { data: existingLead } = await supabase
+    .from("leads")
+    .select("full_name")
+    .eq("id", id)
+    .eq("user_id", workspaceId)
+    .maybeSingle();
+
+  await logActivity({
+    activityType: "Lead Deleted",
+    description: `Deleted lead ${existingLead?.full_name ?? id}.`,
+    leadId: id,
+    supabase,
+    workspaceId,
+  });
 
   const { error } = await supabase.from("leads").delete().eq("id", id).eq("user_id", workspaceId);
 

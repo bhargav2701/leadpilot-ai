@@ -74,5 +74,14 @@ export async function POST(request: Request) {
     }
   }
 
+  if (imported > 0) {
+    await supabase.from("activity_logs").insert({
+      activity_type: "CSV Import",
+      description: `Imported ${imported} lead${imported === 1 ? "" : "s"} from CSV.`,
+      lead_id: null,
+      user_id: workspaceId,
+    });
+  }
+
   return NextResponse.json({ failed, imported });
 }

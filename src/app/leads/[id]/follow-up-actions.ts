@@ -115,6 +115,13 @@ export async function generateFollowUp(formData: FormData) {
     redirect(`/leads/${leadId}?error=${encodedMessage(error.message)}`);
   }
 
+  await supabase.from("activity_logs").insert({
+    activity_type: "Follow-Up Generated",
+    description: `Generated a ${tone.toLowerCase()} follow-up for ${lead.full_name}.`,
+    lead_id: lead.id,
+    user_id: workspaceId,
+  });
+
   revalidatePath("/dashboard");
   revalidatePath("/analytics");
   revalidatePath(`/leads/${leadId}`);
