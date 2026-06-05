@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { LeadScoreBadge } from "@/components/lead-score-badge";
+import type { AILeadSummary } from "@/lib/ai/lead-summary";
 import type { ActivityLog } from "@/types/activity-log";
 import type { Lead, LeadStatus } from "@/types/lead";
 import { leadTemperatures } from "@/types/lead";
@@ -11,6 +12,7 @@ const pipelineStages = ["New", "Qualified", "Proposal", "Won", "Lost"] satisfies
 
 type PipelineBoardProps = {
   activityLogs: ActivityLog[];
+  aiSummaries: Record<string, AILeadSummary>;
   leads: Lead[];
   reminderCounts: Record<string, number>;
 };
@@ -29,6 +31,7 @@ function getSource(lead: Lead) {
 
 export function PipelineBoard({
   activityLogs,
+  aiSummaries,
   leads: initialLeads,
   reminderCounts,
 }: PipelineBoardProps) {
@@ -44,6 +47,7 @@ export function PipelineBoard({
   const selectedActivity = selectedLead
     ? activityLogs.filter((activity) => activity.lead_id === selectedLead.id)
     : [];
+  const selectedSummary = selectedLead ? aiSummaries[selectedLead.id] : null;
 
   const sources = useMemo(
     () => Array.from(new Set(leads.map(getSource))).sort((a, b) => a.localeCompare(b)),
@@ -283,6 +287,43 @@ export function PipelineBoard({
                 {selectedLead.notes || "No notes added."}
               </p>
             </section>
+
+            {selectedSummary && (
+              <section className="mt-5 rounded-xl border border-orange-500/20 bg-orange-500/10 p-5">
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-orange-300">
+                  AI Lead Summary
+                </p>
+                <p className="mt-3 leading-7 text-orange-50">{selectedSummary.summary}</p>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-white/10 bg-black/60 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">
+                      Recommended
+                    </p>
+                    <p className="mt-2 font-black text-white">
+                      {selectedSummary.recommendedAction}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-black/60 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">
+                      Health
+                    </p>
+                    <p className="mt-2 font-black text-white">{selectedSummary.health}</p>
+                  </div>
+                </div>
+                <div className="mt-5">
+                  <div className="flex items-center justify-between text-sm font-bold text-orange-100">
+                    <span>Opportunity Score</span>
+                    <span>{selectedSummary.opportunityScore}</span>
+                  </div>
+                  <div className="mt-2 h-3 overflow-hidden rounded-full bg-black">
+                    <div
+                      className="h-full rounded-full bg-orange-500"
+                      style={{ width: `${selectedSummary.opportunityScore}%` }}
+                    />
+                  </div>
+                </div>
+              </section>
+            )}
 
             <section className="mt-5 rounded-xl border border-white/10 bg-black p-5">
               <h3 className="text-xl font-black">Activity Timeline</h3>

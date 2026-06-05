@@ -1,6 +1,8 @@
 import { AppShell } from "@/components/app-shell";
+import { buildAILeadSummary, type AILeadSummary } from "@/lib/ai/lead-summary";
 import { requireUser } from "@/lib/auth/require-user";
 import type { ActivityLog } from "@/types/activity-log";
+import type { FollowUp } from "@/types/follow-up";
 import type { Lead } from "@/types/lead";
 import type { Reminder } from "@/types/reminder";
 import { PipelineBoard } from "./pipeline-board";
@@ -15,7 +17,7 @@ export default async function PipelinePage() {
     .order("created_at", { ascending: false });
   const leads = (leadsData ?? []) as Lead[];
   const leadIds = leads.map((lead) => lead.id);
-  const [activityLogsResult, remindersResult] = leadIds.length
+  const [activityLogsResult, remindersResult, followUpsResult] = leadIds.length
     ? await Promise.all([
         supabase
           .from("activity_logs")
@@ -24,15 +26,32 @@ export default async function PipelinePage() {
           .in("lead_id", leadIds)
           .order("created_at", { ascending: false }),
         supabase.from("reminders").select("*").eq("user_id", user.id).in("lead_id", leadIds),
+        supabase
+          .from("follow_ups")
+          .select("*")
+          .eq("user_id", user.id)
+          .in("lead_id", leadIds)
+          .order("created_at", { ascending: false }),
       ])
     : [
         { data: [] as ActivityLog[], error: null },
         { data: [] as Reminder[], error: null },
+        { data: [] as FollowUp[], error: null },
       ];
   const activityLogs = (activityLogsResult.data ?? []) as ActivityLog[];
   const reminders = (remindersResult.data ?? []) as Reminder[];
+  const followUps = (followUpsResult.data ?? []) as FollowUp[];
   const reminderCounts = reminders.reduce<Record<string, number>>((result, reminder) => {
     result[reminder.lead_id] = (result[reminder.lead_id] ?? 0) + 1;
+    return result;
+  }, {});
+  const aiSummaries = leads.reduce<Record<string, AILeadSummary>>((result, lead) => {
+    result[lead.id] = buildAILeadSummary({
+      activityLogs: activityLogs.filter((activity) => activity.lead_id === lead.id),
+      followUps: followUps.filter((followUp) => followUp.lead_id === lead.id),
+      lead,
+      reminders: reminders.filter((reminder) => reminder.lead_id === lead.id),
+    });
     return result;
   }, {});
 
@@ -60,6 +79,7 @@ export default async function PipelinePage() {
 
       <PipelineBoard
         activityLogs={activityLogs}
+        aiSummaries={aiSummaries}
         leads={leads}
         reminderCounts={reminderCounts}
       />

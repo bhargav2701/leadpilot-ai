@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { LeadScoreBadge } from "@/components/lead-score-badge";
-import { requireWorkspace } from "@/lib/auth/workspace";
+import { buildAILeadSummary } from "@/lib/ai/lead-summary";
+import { requireUser } from "@/lib/auth/require-user";
+import type { ActivityLog } from "@/types/activity-log";
 import type { FollowUp } from "@/types/follow-up";
 import type { Lead } from "@/types/lead";
+import type { Reminder } from "@/types/reminder";
 
 async function getLeadCount(
-  supabase: Awaited<ReturnType<typeof requireWorkspace>>["supabase"],
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
   userId: string,
   status?: string,
 ) {
@@ -24,7 +27,7 @@ async function getLeadCount(
 }
 
 async function getTemperatureCount(
-  supabase: Awaited<ReturnType<typeof requireWorkspace>>["supabase"],
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
   userId: string,
   temperature: string,
 ) {
@@ -38,7 +41,7 @@ async function getTemperatureCount(
 }
 
 async function getFollowUpCount(
-  supabase: Awaited<ReturnType<typeof requireWorkspace>>["supabase"],
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
   userId: string,
 ) {
   const { count } = await supabase
@@ -50,7 +53,7 @@ async function getFollowUpCount(
 }
 
 async function getReminderCount(
-  supabase: Awaited<ReturnType<typeof requireWorkspace>>["supabase"],
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
   userId: string,
   filter: "overdue" | "today" | "upcoming",
 ) {
@@ -85,7 +88,7 @@ async function getReminderCount(
 }
 
 export default async function DashboardPage() {
-  const { supabase, user, workspaceId } = await requireWorkspace();
+  const { supabase, user } = await requireUser();
 
   const [
     totalLeads,
@@ -101,23 +104,27 @@ export default async function DashboardPage() {
     upcomingReminders,
     recentResult,
     recentFollowUpsResult,
+    aiLeadsResult,
+    aiActivityLogsResult,
+    aiFollowUpsResult,
+    aiRemindersResult,
   ] =
     await Promise.all([
-      getLeadCount(supabase, workspaceId),
-      getLeadCount(supabase, workspaceId, "New"),
-      getLeadCount(supabase, workspaceId, "Qualified"),
-      getLeadCount(supabase, workspaceId, "Won"),
-      getTemperatureCount(supabase, workspaceId, "Hot"),
-      getTemperatureCount(supabase, workspaceId, "Warm"),
-      getTemperatureCount(supabase, workspaceId, "Cold"),
+      getLeadCount(supabase, user.id),
+      getLeadCount(supabase, user.id, "New"),
+      getLeadCount(supabase, user.id, "Qualified"),
+      getLeadCount(supabase, user.id, "Won"),
+      getTemperatureCount(supabase, user.id, "Hot"),
+      getTemperatureCount(supabase, user.id, "Warm"),
+      getTemperatureCount(supabase, user.id, "Cold"),
       getFollowUpCount(supabase, user.id),
-      getReminderCount(supabase, workspaceId, "overdue"),
-      getReminderCount(supabase, workspaceId, "today"),
-      getReminderCount(supabase, workspaceId, "upcoming"),
+      getReminderCount(supabase, user.id, "overdue"),
+      getReminderCount(supabase, user.id, "today"),
+      getReminderCount(supabase, user.id, "upcoming"),
       supabase
         .from("leads")
         .select("*")
-        .eq("user_id", workspaceId)
+        .eq("user_id", user.id)
         .order("lead_score", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(5),
@@ -127,10 +134,48 @@ export default async function DashboardPage() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(5),
+      supabase.from("leads").select("*").eq("user_id", user.id),
+      supabase
+        .from("activity_logs")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }),
+      supabase.from("follow_ups").select("*").eq("user_id", user.id),
+      supabase.from("reminders").select("*").eq("user_id", user.id),
     ]);
 
   const recentLeads = (recentResult.data ?? []) as Lead[];
   const recentFollowUps = (recentFollowUpsResult.data ?? []) as FollowUp[];
+  const aiLeads = (aiLeadsResult.data ?? []) as Lead[];
+  const aiActivityLogs = (aiActivityLogsResult.data ?? []) as ActivityLog[];
+  const aiFollowUps = (aiFollowUpsResult.data ?? []) as FollowUp[];
+  const aiReminders = (aiRemindersResult.data ?? []) as Reminder[];
+  const aiLeadSummaries = aiLeads.map((lead) => {
+    const leadActivity = aiActivityLogs.filter((activity) => activity.lead_id === lead.id);
+    const summary = buildAILeadSummary({
+      activityLogs: leadActivity,
+      followUps: aiFollowUps.filter((followUp) => followUp.lead_id === lead.id),
+      lead,
+      reminders: aiReminders.filter((reminder) => reminder.lead_id === lead.id),
+    });
+
+    return {
+      activityCount: leadActivity.length,
+      lead,
+      summary,
+    };
+  });
+  const topOpportunity = [...aiLeadSummaries].sort(
+    (a, b) => b.summary.opportunityScore - a.summary.opportunityScore,
+  )[0];
+  const mostActiveLead = [...aiLeadSummaries].sort(
+    (a, b) => b.activityCount - a.activityCount,
+  )[0];
+  const attentionLead = [...aiLeadSummaries].sort((a, b) => {
+    const aRisk = a.summary.health === "At Risk" ? 1 : 0;
+    const bRisk = b.summary.health === "At Risk" ? 1 : 0;
+    return bRisk - aRisk || a.summary.opportunityScore - b.summary.opportunityScore;
+  })[0];
   const stats = [
     { label: "Total Leads", value: totalLeads },
     { label: "New Leads", value: newLeads },
@@ -218,6 +263,61 @@ export default async function DashboardPage() {
                 {stat.label}
               </p>
               <p className="mt-3 text-4xl font-black text-orange-500">{stat.value}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-5 rounded-xl border border-white/10 bg-zinc-950 p-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-orange-400">
+              AI Lead Insights
+            </p>
+            <h2 className="mt-2 text-2xl font-black">Summary signals</h2>
+          </div>
+          <Link className="text-sm font-bold text-orange-400 hover:text-orange-300" href="/ai-insights">
+            View AI insights
+          </Link>
+        </div>
+        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+          {[
+            {
+              detail: topOpportunity
+                ? `${topOpportunity.summary.opportunityScore} opportunity score`
+                : "No lead data yet",
+              label: "Top Opportunity Lead",
+              lead: topOpportunity?.lead,
+            },
+            {
+              detail: mostActiveLead
+                ? `${mostActiveLead.activityCount} activity item${mostActiveLead.activityCount === 1 ? "" : "s"}`
+                : "No activity yet",
+              label: "Most Active Lead",
+              lead: mostActiveLead?.lead,
+            },
+            {
+              detail: attentionLead
+                ? `${attentionLead.summary.health} health`
+                : "No attention signal yet",
+              label: "Lead Requiring Attention",
+              lead: attentionLead?.lead,
+            },
+          ].map((item) => (
+            <Link
+              className={`rounded-lg border border-white/10 bg-black p-5 transition ${
+                item.lead ? "hover:border-orange-500/50" : "pointer-events-none opacity-60"
+              }`}
+              href={item.lead ? `/leads/${item.lead.id}` : "/dashboard"}
+              key={item.label}
+            >
+              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                {item.label}
+              </p>
+              <p className="mt-3 truncate text-xl font-black text-white">
+                {item.lead?.full_name ?? "No leads yet"}
+              </p>
+              <p className="mt-2 text-sm font-semibold text-orange-300">{item.detail}</p>
             </Link>
           ))}
         </div>

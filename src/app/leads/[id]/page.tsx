@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { LeadScoreBadge } from "@/components/lead-score-badge";
 import { Notification } from "@/components/notification";
-import { requireWorkspace } from "@/lib/auth/workspace";
+import { buildAILeadSummary } from "@/lib/ai/lead-summary";
+import { requireUser } from "@/lib/auth/require-user";
 import type { ActivityLog } from "@/types/activity-log";
 import type { FollowUp } from "@/types/follow-up";
 import type { Lead } from "@/types/lead";
@@ -23,25 +24,26 @@ type LeadDetailsPageProps = {
 export default async function LeadDetailsPage({ params, searchParams }: LeadDetailsPageProps) {
   const { id } = await params;
   const queryParams = await searchParams;
-  const { supabase, user, workspaceId } = await requireWorkspace();
+  const { supabase, user } = await requireUser();
   const [leadResult, followUpsResult, activityLogsResult, remindersResult] = await Promise.all([
-    supabase.from("leads").select("*").eq("id", id).eq("user_id", workspaceId).single(),
+    supabase.from("leads").select("*").eq("id", id).eq("user_id", user.id).single(),
     supabase
       .from("follow_ups")
       .select("*")
       .eq("lead_id", id)
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
     supabase
       .from("activity_logs")
       .select("*")
       .eq("lead_id", id)
-      .eq("user_id", workspaceId)
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
     supabase
       .from("reminders")
       .select("*")
       .eq("lead_id", id)
-      .eq("user_id", workspaceId)
+      .eq("user_id", user.id)
       .order("completed", { ascending: true })
       .order("reminder_date", { ascending: true }),
   ]);
@@ -54,6 +56,7 @@ export default async function LeadDetailsPage({ params, searchParams }: LeadDeta
   const followUps = (followUpsResult.data ?? []) as FollowUp[];
   const activityLogs = (activityLogsResult.data ?? []) as ActivityLog[];
   const reminders = (remindersResult.data ?? []) as Reminder[];
+  const aiSummary = buildAILeadSummary({ activityLogs, followUps, lead, reminders });
   const currentTime = new Date().getTime();
   const details = [
     { label: "Email", value: lead.email || "-" },
@@ -246,6 +249,47 @@ export default async function LeadDetailsPage({ params, searchParams }: LeadDeta
                 No reminders created for this lead.
               </div>
             )}
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-5 grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
+        <div className="rounded-xl border border-white/10 bg-zinc-950 p-6">
+          <p className="text-sm font-bold uppercase tracking-[0.18em] text-orange-400">
+            AI Lead Summary
+          </p>
+          <h2 className="mt-2 text-2xl font-black">Business summary</h2>
+          <p className="mt-5 leading-8 text-zinc-300">{aiSummary.summary}</p>
+        </div>
+        <div className="grid gap-5">
+          <div className="rounded-xl border border-orange-500/20 bg-orange-500/10 p-6">
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-orange-300">
+              Recommended Next Action
+            </p>
+            <p className="mt-3 text-2xl font-black text-white">
+              {aiSummary.recommendedAction}
+            </p>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-zinc-950 p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-zinc-500">
+                  Opportunity Score
+                </p>
+                <p className="mt-2 text-4xl font-black text-orange-500">
+                  {aiSummary.opportunityScore}
+                </p>
+              </div>
+              <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-sm font-bold text-orange-300">
+                {aiSummary.health}
+              </span>
+            </div>
+            <div className="mt-5 h-3 overflow-hidden rounded-full bg-black">
+              <div
+                className="h-full rounded-full bg-orange-500"
+                style={{ width: `${aiSummary.opportunityScore}%` }}
+              />
+            </div>
           </div>
         </div>
       </section>
