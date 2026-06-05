@@ -8,6 +8,7 @@ type AppShellProps = {
     | "my-leads"
     | "reminders"
     | "pipeline"
+    | "ai-insights"
     | "import"
     | "team"
     | "analytics"
@@ -22,6 +23,7 @@ const navItems = [
   { label: "My Leads", href: "/my-leads", key: "my-leads" },
   { label: "Reminders", href: "/reminders", key: "reminders" },
   { label: "Kanban Pipeline", href: "/pipeline", key: "pipeline" },
+  { label: "AI Insights", href: "/ai-insights", key: "ai-insights" },
   { label: "Import Leads", href: "/import", key: "import" },
   { label: "Team", href: "/team", key: "team" },
   { label: "Analytics", href: "/analytics", key: "analytics" },
