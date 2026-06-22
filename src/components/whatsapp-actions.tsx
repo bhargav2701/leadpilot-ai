@@ -1,18 +1,24 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { applyWhatsAppTemplate, whatsappTemplates } from "@/lib/whatsapp";
+import {
+  generateWhatsAppTemplateMessage,
+  getWhatsAppTemplate,
+  whatsappTemplates,
+  type WhatsAppTemplateKey,
+} from "@/lib/whatsapp";
 import type { Lead } from "@/types/lead";
 import { WhatsAppButton } from "./whatsapp-button";
 
 type WhatsAppActionsProps = {
-  lead: Pick<Lead, "full_name" | "id" | "phone">;
+  lead: Pick<Lead, "full_name" | "id" | "lead_temperature" | "phone" | "source" | "status">;
 };
 
 export function WhatsAppActions({ lead }: WhatsAppActionsProps) {
-  const [selectedTemplate, setSelectedTemplate] = useState(whatsappTemplates[0]);
+  const [selectedTemplate, setSelectedTemplate] = useState<WhatsAppTemplateKey>("follow-up");
+  const template = getWhatsAppTemplate(selectedTemplate);
   const message = useMemo(
-    () => applyWhatsAppTemplate(selectedTemplate, lead),
+    () => generateWhatsAppTemplateMessage(selectedTemplate, lead),
     [lead, selectedTemplate],
   );
 
@@ -36,12 +42,12 @@ export function WhatsAppActions({ lead }: WhatsAppActionsProps) {
           <span className="text-sm font-semibold text-zinc-300">Quick Message Templates</span>
           <select
             className="mt-2 w-full rounded-lg border border-white/10 bg-black px-4 py-3 text-white outline-none transition focus:border-orange-500"
-            onChange={(event) => setSelectedTemplate(event.target.value)}
+            onChange={(event) => setSelectedTemplate(event.target.value as WhatsAppTemplateKey)}
             value={selectedTemplate}
           >
-            {whatsappTemplates.map((template, index) => (
-              <option key={template} value={template}>
-                Template {index + 1}
+            {whatsappTemplates.map((templateOption) => (
+              <option key={templateOption.key} value={templateOption.key}>
+                {templateOption.label}
               </option>
             ))}
           </select>
@@ -53,6 +59,7 @@ export function WhatsAppActions({ lead }: WhatsAppActionsProps) {
             leadId={lead.id}
             message={message}
             phone={lead.phone}
+            templateName={template.label}
           />
         </div>
       </div>

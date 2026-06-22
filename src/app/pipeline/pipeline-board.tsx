@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { LeadScoreBadge } from "@/components/lead-score-badge";
 import { WhatsAppButton } from "@/components/whatsapp-button";
+import { WhatsAppQuickActions } from "@/components/whatsapp-quick-actions";
 import type { AILeadSummary } from "@/lib/ai/lead-summary";
 import type { ActivityLog } from "@/types/activity-log";
 import type { Lead, LeadStatus } from "@/types/lead";
@@ -230,12 +231,7 @@ export function PipelineBoard({
                         Assigned: {getAssignedUser(lead)}
                       </p>
                       <div className="mt-4">
-                        <WhatsAppButton
-                          className="rounded-lg bg-[#25D366] px-3 py-2 text-xs font-black text-black transition hover:bg-[#1ebe5d] disabled:cursor-not-allowed disabled:opacity-50"
-                          label="WhatsApp"
-                          leadId={lead.id}
-                          phone={lead.phone}
-                        />
+                        <WhatsAppQuickActions lead={lead} />
                       </div>
                     </div>
                   ))}

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/require-user";
 
-export async function logWhatsAppInitiated(leadId: string) {
+export async function logWhatsAppInitiated(leadId: string, templateName?: string) {
   const { supabase, user } = await requireUser();
   const { data: lead } = await supabase
     .from("leads")
@@ -18,7 +18,9 @@ export async function logWhatsAppInitiated(leadId: string) {
 
   const { error } = await supabase.from("activity_logs").insert({
     activity_type: "WhatsApp Sent",
-    description: `WhatsApp message initiated to ${lead.full_name}`,
+    description: templateName
+      ? `WhatsApp template "${templateName}" initiated for ${lead.full_name}`
+      : `WhatsApp message initiated to ${lead.full_name}`,
     lead_id: lead.id,
     user_id: user.id,
   });

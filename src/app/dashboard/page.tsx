@@ -228,6 +228,14 @@ export default async function DashboardPage() {
       leadId,
       name: leadNameById.get(leadId) ?? "Unknown Lead",
     }));
+  const whatsappTemplateCounts = whatsappLogs.reduce<Record<string, number>>((result, activity) => {
+    const templateName = activity.description.match(/WhatsApp template "([^"]+)"/)?.[1];
+    if (templateName) {
+      result[templateName] = (result[templateName] ?? 0) + 1;
+    }
+    return result;
+  }, {});
+  const mostUsedTemplate = Object.entries(whatsappTemplateCounts).sort(([, a], [, b]) => b - a)[0];
 
   return (
     <AppShell active="dashboard" userEmail={user.email}>
@@ -312,18 +320,29 @@ export default async function DashboardPage() {
         <div className="mt-5 grid gap-4 lg:grid-cols-3">
           <div className="rounded-lg border border-white/10 bg-black p-5">
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
-              Today
+              Total WhatsApp Actions Today
             </p>
             <p className="mt-3 text-4xl font-black text-[#25D366]">{whatsappToday}</p>
           </div>
           <div className="rounded-lg border border-white/10 bg-black p-5">
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
-              This Week
+              Total WhatsApp Actions This Week
             </p>
             <p className="mt-3 text-4xl font-black text-[#25D366]">{whatsappThisWeek}</p>
           </div>
           <div className="rounded-lg border border-white/10 bg-black p-5">
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              Most Used Template
+            </p>
+            <p className="mt-3 text-2xl font-black text-white">
+              {mostUsedTemplate?.[0] ?? "No template used yet"}
+            </p>
+            {mostUsedTemplate && (
+              <p className="mt-1 text-sm font-bold text-[#25D366]">
+                {mostUsedTemplate[1]} action{mostUsedTemplate[1] === 1 ? "" : "s"}
+              </p>
+            )}
+            <p className="mt-5 text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
               Top Contacted Leads
             </p>
             <div className="mt-3 space-y-2">

@@ -11,6 +11,7 @@ type WhatsAppButtonProps = {
   leadId: string;
   message?: string;
   phone: string | null;
+  templateName?: string;
 };
 
 export function WhatsAppButton({
@@ -20,6 +21,7 @@ export function WhatsAppButton({
   leadId,
   message,
   phone,
+  templateName,
 }: WhatsAppButtonProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
@@ -41,7 +43,7 @@ export function WhatsAppButton({
     window.open(whatsappUrl, "_blank", "noopener,noreferrer");
 
     startTransition(async () => {
-      await logWhatsAppInitiated(leadId);
+      await logWhatsAppInitiated(leadId, templateName);
     });
   }
 
