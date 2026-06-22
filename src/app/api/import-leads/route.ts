@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import {
+  getOrCreateSubscription,
+  getSubscriptionUsage,
+  isLimitReached,
+} from "@/lib/billing/subscription";
 import { createClient } from "@/lib/supabase/server";
 import { leadStatuses, type LeadStatus } from "@/types/lead";
 
@@ -49,12 +54,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No valid leads to import." }, { status: 400 });
   }
 
+  const [subscription, usage] = await Promise.all([
+    getOrCreateSubscription(supabase, user.id),
+    getSubscriptionUsage(supabase, user.id),
+  ]);
+
+  if (isLimitReached(usage.leadCount, subscription.lead_limit)) {
+    return NextResponse.json({ error: "Lead limit reached. Upgrade to import more leads." }, { status: 403 });
+  }
+
+  const remainingLeadSlots =
+    subscription.lead_limit < 0 ? validLeads.length : subscription.lead_limit - usage.leadCount;
+  const importableLeads = validLeads.slice(0, Math.max(remainingLeadSlots, 0));
+
   let imported = 0;
   let failed = 0;
   const createdAt = new Date().toISOString();
 
-  for (let index = 0; index < validLeads.length; index += batchSize) {
-    const batch = validLeads.slice(index, index + batchSize).map((lead) => ({
+  for (let index = 0; index < importableLeads.length; index += batchSize) {
+    const batch = importableLeads.slice(index, index + batchSize).map((lead) => ({
       created_at: createdAt,
       email: lead.email || null,
       full_name: lead.full_name.trim(),
@@ -83,5 +101,5 @@ export async function POST(request: Request) {
     });
   }
 
-  return NextResponse.json({ failed, imported });
+  return NextResponse.json({ failed: failed + validLeads.length - importableLeads.length, imported });
 }

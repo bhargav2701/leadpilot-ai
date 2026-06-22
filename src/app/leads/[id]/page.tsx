@@ -5,6 +5,11 @@ import { LeadScoreBadge } from "@/components/lead-score-badge";
 import { Notification } from "@/components/notification";
 import { buildAILeadSummary } from "@/lib/ai/lead-summary";
 import { requireUser } from "@/lib/auth/require-user";
+import {
+  getOrCreateSubscription,
+  getSubscriptionUsage,
+  isLimitReached,
+} from "@/lib/billing/subscription";
 import type { ActivityLog } from "@/types/activity-log";
 import type { FollowUp } from "@/types/follow-up";
 import type { Lead } from "@/types/lead";
@@ -25,7 +30,14 @@ export default async function LeadDetailsPage({ params, searchParams }: LeadDeta
   const { id } = await params;
   const queryParams = await searchParams;
   const { supabase, user } = await requireUser();
-  const [leadResult, followUpsResult, activityLogsResult, remindersResult] = await Promise.all([
+  const [
+    leadResult,
+    followUpsResult,
+    activityLogsResult,
+    remindersResult,
+    subscription,
+    subscriptionUsage,
+  ] = await Promise.all([
     supabase.from("leads").select("*").eq("id", id).eq("user_id", user.id).single(),
     supabase
       .from("follow_ups")
@@ -46,6 +58,8 @@ export default async function LeadDetailsPage({ params, searchParams }: LeadDeta
       .eq("user_id", user.id)
       .order("completed", { ascending: true })
       .order("reminder_date", { ascending: true }),
+    getOrCreateSubscription(supabase, user.id),
+    getSubscriptionUsage(supabase, user.id),
   ]);
 
   if (!leadResult.data) {
@@ -56,6 +70,10 @@ export default async function LeadDetailsPage({ params, searchParams }: LeadDeta
   const followUps = (followUpsResult.data ?? []) as FollowUp[];
   const activityLogs = (activityLogsResult.data ?? []) as ActivityLog[];
   const reminders = (remindersResult.data ?? []) as Reminder[];
+  const aiLimitReached = isLimitReached(
+    subscriptionUsage.aiRequestsUsed,
+    subscription.ai_requests_limit,
+  );
   const aiSummary = buildAILeadSummary({ activityLogs, followUps, lead, reminders });
   const currentTime = new Date().getTime();
   const details = [
@@ -340,7 +358,13 @@ export default async function LeadDetailsPage({ params, searchParams }: LeadDeta
         </div>
       </section>
 
-      <FollowUpGenerator followUps={followUps} lead={lead} />
+      <FollowUpGenerator
+        aiLimit={subscription.ai_requests_limit}
+        aiRequestsUsed={subscriptionUsage.aiRequestsUsed}
+        followUps={followUps}
+        lead={lead}
+        limitReached={aiLimitReached}
+      />
     </AppShell>
   );
 }

@@ -9,6 +9,7 @@ type AppShellProps = {
     | "reminders"
     | "pipeline"
     | "ai-insights"
+    | "billing"
     | "import"
     | "team"
     | "analytics"
@@ -24,10 +25,11 @@ const navItems = [
   { label: "Reminders", href: "/reminders", key: "reminders" },
   { label: "Kanban Pipeline", href: "/pipeline", key: "pipeline" },
   { label: "AI Insights", href: "/ai-insights", key: "ai-insights" },
+  { label: "Billing", href: "/billing", key: "billing" },
+  { label: "Settings", href: "/settings", key: "settings" },
   { label: "Import Leads", href: "/import", key: "import" },
   { label: "Team", href: "/team", key: "team" },
   { label: "Analytics", href: "/analytics", key: "analytics" },
-  { label: "Settings", href: "/settings", key: "settings" },
 ] as const;
 
 export function AppShell({ active, children, userEmail }: AppShellProps) {

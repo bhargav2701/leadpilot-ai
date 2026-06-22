@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireWorkspace } from "@/lib/auth/workspace";
+import {
+  getOrCreateSubscription,
+  getSubscriptionUsage,
+  isLimitReached,
+} from "@/lib/billing/subscription";
 import type { ActivityType } from "@/types/activity-log";
 import type { Lead } from "@/types/lead";
 import { leadStatuses, type LeadStatus } from "@/types/lead";
@@ -43,12 +48,23 @@ async function logActivity({
 }
 
 export async function createLead(formData: FormData) {
-  const { supabase, workspaceId } = await requireWorkspace();
+  const { supabase, user, workspaceId } = await requireWorkspace();
   const fullName = getValue(formData, "full_name");
   const assignedTo = getValue(formData, "assigned_to");
 
   if (!fullName) {
     redirect(`/leads/new?error=${encodedMessage("Full name is required.")}`);
+  }
+
+  const [subscription, usage] = await Promise.all([
+    getOrCreateSubscription(supabase, user.id),
+    getSubscriptionUsage(supabase, user.id),
+  ]);
+
+  if (isLimitReached(usage.leadCount, subscription.lead_limit)) {
+    redirect(
+      `/leads?upgrade=lead-limit&error=${encodedMessage("Lead limit reached. Upgrade to create more leads.")}`,
+    );
   }
 
   const { data, error } = await supabase
@@ -91,6 +107,7 @@ export async function createLead(formData: FormData) {
   }
 
   revalidatePath("/dashboard");
+  revalidatePath("/billing");
   revalidatePath("/leads");
   revalidatePath("/my-leads");
   revalidatePath("/team");

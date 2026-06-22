@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireWorkspace } from "@/lib/auth/workspace";
+import {
+  getOrCreateSubscription,
+  getSubscriptionUsage,
+  isLimitReached,
+} from "@/lib/billing/subscription";
 import { followUpTones, type FollowUpTone } from "@/types/follow-up";
 import type { Lead } from "@/types/lead";
 
@@ -91,6 +96,17 @@ export async function generateFollowUp(formData: FormData) {
   const tone = getTone(formData);
   const { supabase, user, workspaceId } = await requireWorkspace();
 
+  const [subscription, usage] = await Promise.all([
+    getOrCreateSubscription(supabase, user.id),
+    getSubscriptionUsage(supabase, user.id),
+  ]);
+
+  if (isLimitReached(usage.aiRequestsUsed, subscription.ai_requests_limit)) {
+    redirect(
+      `/leads/${leadId}?error=${encodedMessage("AI request limit reached. Upgrade to continue generating follow-ups.")}`,
+    );
+  }
+
   const { data: leadData } = await supabase
     .from("leads")
     .select("*")
@@ -124,6 +140,7 @@ export async function generateFollowUp(formData: FormData) {
 
   revalidatePath("/dashboard");
   revalidatePath("/analytics");
+  revalidatePath("/billing");
   revalidatePath(`/leads/${leadId}`);
   redirect(`/leads/${leadId}?success=${encodedMessage("Follow-up generated successfully.")}`);
 }

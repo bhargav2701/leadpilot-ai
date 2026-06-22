@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { LeadScoreBadge } from "@/components/lead-score-badge";
+import { UsageProgress } from "@/components/usage-progress";
 import { buildAILeadSummary } from "@/lib/ai/lead-summary";
 import { requireUser } from "@/lib/auth/require-user";
+import { getOrCreateSubscription, getSubscriptionUsage } from "@/lib/billing/subscription";
 import type { ActivityLog } from "@/types/activity-log";
 import type { FollowUp } from "@/types/follow-up";
 import type { Lead } from "@/types/lead";
@@ -108,6 +110,8 @@ export default async function DashboardPage() {
     aiActivityLogsResult,
     aiFollowUpsResult,
     aiRemindersResult,
+    subscription,
+    subscriptionUsage,
   ] =
     await Promise.all([
       getLeadCount(supabase, user.id),
@@ -142,6 +146,8 @@ export default async function DashboardPage() {
         .order("created_at", { ascending: false }),
       supabase.from("follow_ups").select("*").eq("user_id", user.id),
       supabase.from("reminders").select("*").eq("user_id", user.id),
+      getOrCreateSubscription(supabase, user.id),
+      getSubscriptionUsage(supabase, user.id),
     ]);
 
   const recentLeads = (recentResult.data ?? []) as Lead[];
@@ -228,6 +234,38 @@ export default async function DashboardPage() {
           </p>
         </Link>
       )}
+
+      <section className="mt-8 rounded-xl border border-orange-500/30 bg-zinc-950 p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-orange-400">
+              Subscription Overview
+            </p>
+            <h2 className="mt-2 text-2xl font-black">{subscription.plan_name} Plan</h2>
+            <p className="mt-2 text-sm font-semibold text-zinc-500">
+              Status: {subscription.status}
+            </p>
+          </div>
+          <Link
+            className="rounded-lg bg-orange-500 px-5 py-3 text-center text-sm font-black text-black transition hover:bg-orange-400"
+            href="/billing"
+          >
+            Upgrade Plan
+          </Link>
+        </div>
+        <div className="mt-6 grid gap-5 md:grid-cols-2">
+          <UsageProgress
+            label="Lead Usage"
+            limit={subscription.lead_limit}
+            used={subscriptionUsage.leadCount}
+          />
+          <UsageProgress
+            label="AI Usage"
+            limit={subscription.ai_requests_limit}
+            used={subscriptionUsage.aiRequestsUsed}
+          />
+        </div>
+      </section>
 
       <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (

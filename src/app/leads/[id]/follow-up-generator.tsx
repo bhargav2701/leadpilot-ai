@@ -5,11 +5,20 @@ import { CopyButton } from "./copy-button";
 import { generateFollowUp } from "./follow-up-actions";
 
 type FollowUpGeneratorProps = {
+  aiLimit: number;
+  aiRequestsUsed: number;
   followUps: FollowUp[];
+  limitReached: boolean;
   lead: Lead;
 };
 
-export function FollowUpGenerator({ followUps, lead }: FollowUpGeneratorProps) {
+export function FollowUpGenerator({
+  aiLimit,
+  aiRequestsUsed,
+  followUps,
+  limitReached,
+  lead,
+}: FollowUpGeneratorProps) {
   return (
     <section className="mt-8 rounded-xl border border-white/10 bg-zinc-950 p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -18,6 +27,17 @@ export function FollowUpGenerator({ followUps, lead }: FollowUpGeneratorProps) {
             AI Follow-Up Generator
           </p>
           <h2 className="mt-3 text-2xl font-black">Generate Follow-Up</h2>
+          <p className="mt-2 text-sm font-semibold text-zinc-500">
+            AI Usage: {aiRequestsUsed} / {aiLimit < 0 ? "Unlimited" : aiLimit}
+          </p>
+          {limitReached && (
+            <div className="mt-4 rounded-lg border border-orange-500/40 bg-orange-500/10 p-4">
+              <p className="font-bold text-orange-300">AI request limit reached</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-300">
+                Upgrade your plan to continue generating AI follow-ups.
+              </p>
+            </div>
+          )}
           <div className="mt-4 grid gap-3 text-sm text-zinc-400 sm:grid-cols-2">
             <p>
               <span className="font-bold text-zinc-200">Lead Name:</span> {lead.full_name}
@@ -50,6 +70,7 @@ export function FollowUpGenerator({ followUps, lead }: FollowUpGeneratorProps) {
           </select>
           <SubmitButton
             className="rounded-lg bg-orange-500 px-5 py-3 text-sm font-black text-black transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={limitReached}
             pendingLabel="Generating..."
           >
             Generate Follow-Up
@@ -77,6 +98,7 @@ export function FollowUpGenerator({ followUps, lead }: FollowUpGeneratorProps) {
                       <input name="tone" type="hidden" value={followUp.tone} />
                       <SubmitButton
                         className="rounded-lg border border-white/10 px-3 py-2 text-sm font-bold text-zinc-300 transition hover:border-orange-500/50 hover:text-orange-300 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={limitReached}
                         pendingLabel="Regenerating..."
                       >
                         Regenerate

@@ -3,6 +3,11 @@ import { AppShell } from "@/components/app-shell";
 import { LeadScoreBadge } from "@/components/lead-score-badge";
 import { Notification } from "@/components/notification";
 import { getWorkspaceMembers, requireWorkspace } from "@/lib/auth/workspace";
+import {
+  getOrCreateSubscription,
+  getSubscriptionUsage,
+  isLimitReached,
+} from "@/lib/billing/subscription";
 import type { Lead, LeadStatus, LeadTemperature } from "@/types/lead";
 import { leadStatuses, leadTemperatures } from "@/types/lead";
 import { DeleteLeadModal } from "./delete-lead-modal";
@@ -19,6 +24,7 @@ type LeadsPageProps = {
     sort?: string;
     success?: string;
     error?: string;
+    upgrade?: string;
   }>;
 };
 
@@ -97,7 +103,12 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
   const { data, count } = await query;
   const leads = (data ?? []) as Lead[];
   const totalPages = Math.max(Math.ceil((count ?? 0) / pageSize), 1);
-  const members = await getWorkspaceMembers(workspaceId);
+  const [members, subscription, usage] = await Promise.all([
+    getWorkspaceMembers(workspaceId),
+    getOrCreateSubscription(supabase, user.id),
+    getSubscriptionUsage(supabase, user.id),
+  ]);
+  const leadLimitReached = isLimitReached(usage.leadCount, subscription.lead_limit);
   const assignees = [
     { role: "Owner", user_id: workspaceId },
     ...members.filter((member) => member.user_id !== workspaceId),
@@ -113,15 +124,40 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
             Lead management
           </h1>
         </div>
-        <Link
-          className="rounded-lg bg-orange-500 px-5 py-3 text-center text-sm font-black text-black transition hover:bg-orange-400"
-          href="/leads/new"
-        >
-          Add Lead
-        </Link>
+        {leadLimitReached ? (
+          <span className="cursor-not-allowed rounded-lg bg-zinc-800 px-5 py-3 text-center text-sm font-black text-zinc-500">
+            Add Lead
+          </span>
+        ) : (
+          <Link
+            className="rounded-lg bg-orange-500 px-5 py-3 text-center text-sm font-black text-black transition hover:bg-orange-400"
+            href="/leads/new"
+          >
+            Add Lead
+          </Link>
+        )}
       </div>
 
       <Notification error={params.error} success={params.success} />
+
+      {leadLimitReached && (
+        <section className="mt-6 rounded-xl border border-orange-500/40 bg-orange-500/10 p-6">
+          <p className="text-sm font-bold uppercase tracking-[0.18em] text-orange-300">
+            Upgrade Required
+          </p>
+          <h2 className="mt-2 text-2xl font-black">Free lead limit reached</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300">
+            Your current plan has reached its lead limit. Upgrade to Starter or Pro to create
+            more leads.
+          </p>
+          <Link
+            className="mt-5 inline-flex rounded-lg bg-orange-500 px-5 py-3 text-sm font-black text-black transition hover:bg-orange-400"
+            href="/billing"
+          >
+            View Plans
+          </Link>
+        </section>
+      )}
 
       <form className="mt-8 grid w-full max-w-full min-w-0 gap-3 rounded-xl border border-white/10 bg-zinc-950 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,150px)_minmax(0,150px)_minmax(0,170px)_minmax(0,170px)_auto]">
         <input
