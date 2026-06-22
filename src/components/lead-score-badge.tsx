@@ -33,7 +33,9 @@ export function LeadScoreBadge({ score, temperature }: LeadScoreBadgeProps) {
   const icon = safeTemperature === "Hot" ? "🔥" : safeTemperature === "Warm" ? "🟡" : "🔵";
 
   return (
-    <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-black ${styles}`}>
+    <span
+      className={`inline-flex max-w-full items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1 text-sm font-black ${styles}`}
+    >
       <span>{safeScore}</span>
       <span>{icon}</span>
       <span>{safeTemperature}</span>
