@@ -8,11 +8,17 @@ export const whatsappTemplates = [
 ];
 
 export function formatWhatsAppPhone(phone: string | null | undefined) {
-  return phone?.replace(/\D/g, "") ?? "";
+  const digits = phone?.replace(/\D/g, "") ?? "";
+
+  if (digits.length === 10) {
+    return `91${digits}`;
+  }
+
+  return digits;
 }
 
 export function hasValidWhatsAppPhone(phone: string | null | undefined) {
-  return formatWhatsAppPhone(phone).length >= 8;
+  return formatWhatsAppPhone(phone).length >= 10;
 }
 
 export function buildWhatsAppUrl(phone: string | null | undefined, message?: string) {

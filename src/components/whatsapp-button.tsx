@@ -24,7 +24,7 @@ export function WhatsAppButton({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
   const isValid = hasValidWhatsAppPhone(phone);
-  const disabled = !isValid || isPending;
+  const disabled = isPending;
 
   function openWhatsApp() {
     if (!isValid) {
@@ -32,23 +32,30 @@ export function WhatsAppButton({
       return;
     }
 
+    const whatsappUrl = buildWhatsAppUrl(phone, message);
+
     setError("");
-    const whatsappWindow = window.open("about:blank", "_blank", "noopener,noreferrer");
+    if (process.env.NODE_ENV === "development") {
+      console.log("Generated WhatsApp URL:", whatsappUrl);
+    }
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+
     startTransition(async () => {
       await logWhatsAppInitiated(leadId);
-      const whatsappUrl = buildWhatsAppUrl(phone, message);
-      if (whatsappWindow) {
-        whatsappWindow.location.href = whatsappUrl;
-      } else {
-        window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-      }
     });
   }
 
   return (
     <div>
       <button
-        className={disabled && disabledClassName ? disabledClassName : className}
+        className={
+          !isValid
+            ? (disabledClassName ??
+              "rounded-lg bg-zinc-800 px-4 py-2 text-sm font-black text-zinc-500 transition hover:bg-zinc-700")
+            : disabled && disabledClassName
+              ? disabledClassName
+              : className
+        }
         disabled={disabled}
         onClick={(event) => {
           event.stopPropagation();
@@ -61,7 +68,14 @@ export function WhatsAppButton({
       {!isValid && (
         <p className="mt-2 text-xs font-bold text-zinc-500">Phone number required for WhatsApp.</p>
       )}
-      {error && <p className="mt-2 text-xs font-bold text-red-300">{error}</p>}
+      {error && (
+        <div
+          className="fixed bottom-5 right-5 z-[80] rounded-lg border border-red-500/30 bg-red-500 px-4 py-3 text-sm font-black text-white shadow-2xl"
+          role="status"
+        >
+          {error}
+        </div>
+      )}
     </div>
   );
 }
