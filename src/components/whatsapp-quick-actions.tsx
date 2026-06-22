@@ -13,10 +13,11 @@ import {
 import type { Lead } from "@/types/lead";
 
 type WhatsAppQuickActionsProps = {
+  label?: string;
   lead: Pick<Lead, "full_name" | "id" | "lead_temperature" | "phone" | "source" | "status">;
 };
 
-export function WhatsAppQuickActions({ lead }: WhatsAppQuickActionsProps) {
+export function WhatsAppQuickActions({ label = "WhatsApp", lead }: WhatsAppQuickActionsProps) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
   const [, startTransition] = useTransition();
@@ -58,7 +59,7 @@ export function WhatsAppQuickActions({ lead }: WhatsAppQuickActionsProps) {
   return (
     <div className="relative" ref={menuRef}>
       <button
-        className={`flex h-10 w-full min-w-[112px] items-center justify-center gap-2 rounded-[10px] px-3 text-xs font-black transition ${
+        className={`flex h-10 w-full items-center justify-center gap-1 rounded-[10px] px-2 text-xs font-black transition ${
           isValid
             ? "bg-[#25D366] text-black hover:bg-[#1ebe5d]"
             : "bg-zinc-800 text-zinc-500 hover:bg-zinc-700"
@@ -73,7 +74,7 @@ export function WhatsAppQuickActions({ lead }: WhatsAppQuickActionsProps) {
         }}
         type="button"
       >
-        WhatsApp <span aria-hidden="true">▼</span>
+        {label} <span aria-hidden="true">v</span>
       </button>
       {open && (
         <div

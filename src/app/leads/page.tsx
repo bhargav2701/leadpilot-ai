@@ -224,34 +224,34 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
       </form>
 
       <section className="mt-6 hidden w-full max-w-full min-w-0 overflow-visible rounded-xl border border-white/10 bg-zinc-950 md:block">
-        <div className="w-full max-w-full min-w-0 overflow-x-auto">
-          <table className="w-full min-w-[1460px] table-fixed text-left">
+        <div className="w-full max-w-full min-w-0">
+          <table className="w-full table-fixed text-left">
             <colgroup>
-              <col style={{ width: "280px" }} />
-              <col style={{ width: "140px" }} />
-              <col style={{ width: "140px" }} />
-              <col style={{ width: "140px" }} />
-              <col style={{ width: "180px" }} />
-              <col style={{ width: "180px" }} />
-              <col style={{ width: "140px" }} />
-              <col style={{ width: "260px" }} />
+              <col className="w-[21%]" />
+              <col className="w-[10%]" />
+              <col className="w-[9%]" />
+              <col className="w-[9%]" />
+              <col className="w-[11%]" />
+              <col className="w-[12%]" />
+              <col className="w-[9%]" />
+              <col className="w-[19%]" />
             </colgroup>
             <thead className="border-b border-white/10 bg-white/[0.03] text-xs uppercase tracking-[0.16em] text-zinc-500">
               <tr>
-                <th className="px-4 py-4">Lead</th>
-                <th className="px-4 py-4">Phone</th>
-                <th className="px-4 py-4">Source</th>
-                <th className="px-4 py-4">Status</th>
-                <th className="px-4 py-4">AI Score</th>
-                <th className="min-w-[180px] px-4 py-4">Assigned</th>
-                <th className="px-4 py-4">Created</th>
-                <th className="px-4 py-4 text-right">Actions</th>
+                <th className="px-2 py-4">Lead</th>
+                <th className="px-2 py-4">Phone</th>
+                <th className="px-2 py-4">Source</th>
+                <th className="px-2 py-4">Status</th>
+                <th className="px-2 py-4">AI Score</th>
+                <th className="px-2 py-4">Assigned</th>
+                <th className="px-2 py-4">Created</th>
+                <th className="px-2 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
               {leads.map((lead) => (
                 <tr className="transition hover:bg-white/[0.03]" key={lead.id}>
-                  <td className="min-w-0 px-4 py-4">
+                  <td className="min-w-0 px-2 py-4">
                     <Link
                       className="block truncate font-bold text-white hover:text-orange-300"
                       href={`/leads/${lead.id}`}
@@ -260,14 +260,14 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
                     </Link>
                     <p className="mt-1 truncate text-sm text-zinc-500">{lead.email || "No email"}</p>
                   </td>
-                  <td className="truncate px-4 py-4 text-zinc-300">{lead.phone || "-"}</td>
-                  <td className="truncate px-4 py-4 text-zinc-300">{lead.source || "-"}</td>
-                  <td className="px-4 py-4">
-                    <span className="inline-block max-w-full truncate rounded-full bg-orange-500/15 px-3 py-1 text-sm font-bold text-orange-300">
+                  <td className="truncate px-2 py-4 text-zinc-300">{lead.phone || "-"}</td>
+                  <td className="truncate px-2 py-4 text-zinc-300">{lead.source || "-"}</td>
+                  <td className="px-2 py-4">
+                    <span className="inline-block max-w-full truncate rounded-full bg-orange-500/15 px-2 py-1 text-xs font-bold text-orange-300 xl:px-3 xl:text-sm">
                       {lead.status}
                     </span>
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-2 py-4">
                     <div className="flex min-w-0 items-center gap-2 whitespace-nowrap">
                       <LeadScoreBadge
                         score={lead.lead_score}
@@ -275,7 +275,7 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
                       />
                     </div>
                   </td>
-                  <td className="min-w-[180px] px-4 py-4 text-zinc-400">
+                  <td className="min-w-0 px-2 py-4 text-zinc-400">
                     <span className="block truncate">
                       {lead.assigned_to
                         ? lead.assigned_to === workspaceId
@@ -284,19 +284,21 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
                         : "Unassigned"}
                     </span>
                   </td>
-                  <td className="truncate px-4 py-4 text-zinc-400">
+                  <td className="truncate px-2 py-4 text-zinc-400">
                     {new Date(lead.created_at).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-2 py-4">
                     <div className="flex min-w-0 items-center justify-end gap-2">
-                      <div className="w-[112px]">
-                        <WhatsAppQuickActions lead={lead} />
+                      <div className="w-[86px] xl:w-[108px]">
+                        <WhatsAppQuickActions label="WA" lead={lead} />
                       </div>
                       <Link
-                        className="flex h-10 items-center justify-center rounded-[10px] border border-white/10 px-3 text-sm font-bold text-zinc-300 transition hover:border-orange-500/50 hover:text-orange-300"
+                        className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-white/10 text-sm font-bold text-zinc-300 transition hover:border-orange-500/50 hover:text-orange-300 xl:w-auto xl:px-3"
                         href={`/leads/${lead.id}/edit`}
+                        title="Edit"
                       >
-                        Edit
+                        <span className="xl:hidden">E</span>
+                        <span className="hidden xl:inline">Edit</span>
                       </Link>
                       <DeleteLeadModal id={lead.id} name={lead.full_name} />
                     </div>
