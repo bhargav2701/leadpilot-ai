@@ -7,7 +7,8 @@ export type ActivityType =
   | "Follow-Up Generated"
   | "CSV Import"
   | "Reminder Created"
-  | "Reminder Completed";
+  | "Reminder Completed"
+  | "WhatsApp Sent";
 
 export type ActivityLog = {
   id: string;

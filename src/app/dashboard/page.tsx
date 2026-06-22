@@ -198,6 +198,36 @@ export default async function DashboardPage() {
     { href: "/reminders?filter=today", label: "Due Today", value: dueTodayReminders },
     { href: "/reminders?filter=upcoming", label: "Upcoming", value: upcomingReminders },
   ];
+  const now = new Date();
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfWeek = new Date(startOfToday);
+  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+  const whatsappLogs = aiActivityLogs.filter(
+    (activity) => activity.activity_type === "WhatsApp Sent",
+  );
+  const whatsappToday = whatsappLogs.filter(
+    (activity) => new Date(activity.created_at) >= startOfToday,
+  ).length;
+  const whatsappThisWeek = whatsappLogs.filter(
+    (activity) => new Date(activity.created_at) >= startOfWeek,
+  ).length;
+  const leadNameById = new Map(aiLeads.map((lead) => [lead.id, lead.full_name]));
+  const topContactedLeads = Object.entries(
+    whatsappLogs.reduce<Record<string, number>>((result, activity) => {
+      if (activity.lead_id) {
+        result[activity.lead_id] = (result[activity.lead_id] ?? 0) + 1;
+      }
+      return result;
+    }, {}),
+  )
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3)
+    .map(([leadId, count]) => ({
+      count,
+      leadId,
+      name: leadNameById.get(leadId) ?? "Unknown Lead",
+    }));
 
   return (
     <AppShell active="dashboard" userEmail={user.email}>
@@ -264,6 +294,55 @@ export default async function DashboardPage() {
             limit={subscription.ai_requests_limit}
             used={subscriptionUsage.aiRequestsUsed}
           />
+        </div>
+      </section>
+
+      <section className="mt-5 rounded-xl border border-white/10 bg-zinc-950 p-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-orange-400">
+              WhatsApp Activity
+            </p>
+            <h2 className="mt-2 text-2xl font-black">Messages initiated</h2>
+          </div>
+          <Link className="text-sm font-bold text-orange-400 hover:text-orange-300" href="/leads">
+            Contact leads
+          </Link>
+        </div>
+        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+          <div className="rounded-lg border border-white/10 bg-black p-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              Today
+            </p>
+            <p className="mt-3 text-4xl font-black text-[#25D366]">{whatsappToday}</p>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-black p-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              This Week
+            </p>
+            <p className="mt-3 text-4xl font-black text-[#25D366]">{whatsappThisWeek}</p>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-black p-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              Top Contacted Leads
+            </p>
+            <div className="mt-3 space-y-2">
+              {topContactedLeads.length ? (
+                topContactedLeads.map((lead) => (
+                  <Link
+                    className="flex items-center justify-between gap-3 rounded-lg border border-white/10 px-3 py-2 text-sm font-bold text-zinc-300 transition hover:border-orange-500/50 hover:text-orange-300"
+                    href={`/leads/${lead.leadId}`}
+                    key={lead.leadId}
+                  >
+                    <span className="truncate">{lead.name}</span>
+                    <span className="text-[#25D366]">{lead.count}</span>
+                  </Link>
+                ))
+              ) : (
+                <p className="text-sm font-semibold text-zinc-500">No WhatsApp activity yet.</p>
+              )}
+            </div>
+          </div>
         </div>
       </section>
 

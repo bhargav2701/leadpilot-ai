@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { LeadScoreBadge } from "@/components/lead-score-badge";
 import { Notification } from "@/components/notification";
+import { WhatsAppActions } from "@/components/whatsapp-actions";
 import { buildAILeadSummary } from "@/lib/ai/lead-summary";
 import { requireUser } from "@/lib/auth/require-user";
 import {
@@ -311,6 +312,8 @@ export default async function LeadDetailsPage({ params, searchParams }: LeadDeta
           </div>
         </div>
       </section>
+
+      <WhatsAppActions lead={lead} />
 
       <section className="mt-5 rounded-xl border border-white/10 bg-zinc-950 p-6">
         <div className="flex items-center justify-between gap-4">

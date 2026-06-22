@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { LeadScoreBadge } from "@/components/lead-score-badge";
+import { WhatsAppButton } from "@/components/whatsapp-button";
 import type { AILeadSummary } from "@/lib/ai/lead-summary";
 import type { ActivityLog } from "@/types/activity-log";
 import type { Lead, LeadStatus } from "@/types/lead";
@@ -195,9 +196,10 @@ export function PipelineBoard({
 
                 <div className="mt-4 space-y-3">
                   {stageLeads.map((lead) => (
-                    <button
-                      className="block w-full rounded-xl border border-white/10 bg-black p-4 text-left transition hover:-translate-y-0.5 hover:border-orange-500/50 hover:bg-zinc-900 disabled:opacity-70"
-                      disabled={isPending}
+                    <div
+                      className={`block w-full rounded-xl border border-white/10 bg-black p-4 text-left transition hover:-translate-y-0.5 hover:border-orange-500/50 hover:bg-zinc-900 ${
+                        isPending ? "opacity-70" : ""
+                      }`}
                       draggable
                       key={lead.id}
                       onClick={() => setSelectedLeadId(lead.id)}
@@ -206,7 +208,8 @@ export function PipelineBoard({
                         setDraggedLeadId(lead.id);
                         event.dataTransfer.setData("text/plain", lead.id);
                       }}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -226,7 +229,15 @@ export function PipelineBoard({
                       <p className="mt-4 truncate text-xs font-semibold text-zinc-500">
                         Assigned: {getAssignedUser(lead)}
                       </p>
-                    </button>
+                      <div className="mt-4">
+                        <WhatsAppButton
+                          className="rounded-lg bg-[#25D366] px-3 py-2 text-xs font-black text-black transition hover:bg-[#1ebe5d] disabled:cursor-not-allowed disabled:opacity-50"
+                          label="WhatsApp"
+                          leadId={lead.id}
+                          phone={lead.phone}
+                        />
+                      </div>
+                    </div>
                   ))}
 
                   {!stageLeads.length && (
@@ -280,6 +291,13 @@ export function PipelineBoard({
                 </div>
               ))}
             </div>
+
+            <section className="mt-5 rounded-xl border border-white/10 bg-black p-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <h3 className="text-xl font-black">WhatsApp</h3>
+                <WhatsAppButton leadId={selectedLead.id} phone={selectedLead.phone} />
+              </div>
+            </section>
 
             <section className="mt-5 rounded-xl border border-white/10 bg-black p-5">
               <h3 className="text-xl font-black">Notes</h3>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { LeadScoreBadge } from "@/components/lead-score-badge";
 import { Notification } from "@/components/notification";
+import { WhatsAppButton } from "@/components/whatsapp-button";
 import { getWorkspaceMembers, requireWorkspace } from "@/lib/auth/workspace";
 import {
   getOrCreateSubscription,
@@ -234,7 +235,7 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
                 <th className="w-[145px] px-4 py-4">AI Score</th>
                 <th className="w-[145px] px-4 py-4">Assigned</th>
                 <th className="w-[110px] px-4 py-4">Created</th>
-                <th className="w-[125px] px-4 py-4 text-right">Actions</th>
+                <th className="w-[185px] px-4 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
@@ -274,6 +275,12 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex min-w-0 justify-end gap-2">
+                      <WhatsAppButton
+                        className="rounded-lg bg-[#25D366] px-2.5 py-2 text-sm font-black text-black transition hover:bg-[#1ebe5d] disabled:cursor-not-allowed disabled:opacity-50"
+                        label="WA"
+                        leadId={lead.id}
+                        phone={lead.phone}
+                      />
                       <Link
                         className="rounded-lg border border-white/10 px-2.5 py-2 text-sm font-bold text-zinc-300 transition hover:border-orange-500/50 hover:text-orange-300"
                         href={`/leads/${lead.id}/edit`}
