@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Notification } from "@/components/notification";
 import { requireWorkspace } from "@/lib/auth/workspace";
+import { processDueEmailReminders } from "@/lib/email/send";
 import { reminderTypes, type ReminderWithLead } from "@/types/reminder";
 import { completeReminder } from "./actions";
 
@@ -120,6 +121,7 @@ function ReminderCard({ reminder }: { reminder: ReminderWithLead }) {
 export default async function RemindersPage({ searchParams }: RemindersPageProps) {
   const queryParams = await searchParams;
   const { supabase, user, workspaceId } = await requireWorkspace();
+  await processDueEmailReminders(supabase, user.id);
   const activeFilter: ReminderFilter = ["overdue", "today", "upcoming", "completed"].includes(
     queryParams.filter ?? "",
   )

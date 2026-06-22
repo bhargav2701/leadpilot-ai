@@ -5,6 +5,7 @@ import { UsageProgress } from "@/components/usage-progress";
 import { buildAILeadSummary } from "@/lib/ai/lead-summary";
 import { requireUser } from "@/lib/auth/require-user";
 import { getOrCreateSubscription, getSubscriptionUsage } from "@/lib/billing/subscription";
+import { processDueEmailReminders } from "@/lib/email/send";
 import type { ActivityLog } from "@/types/activity-log";
 import type { FollowUp } from "@/types/follow-up";
 import type { Lead } from "@/types/lead";
@@ -91,6 +92,7 @@ async function getReminderCount(
 
 export default async function DashboardPage() {
   const { supabase, user } = await requireUser();
+  await processDueEmailReminders(supabase, user.id);
 
   const [
     totalLeads,
@@ -110,6 +112,7 @@ export default async function DashboardPage() {
     aiActivityLogsResult,
     aiFollowUpsResult,
     aiRemindersResult,
+    emailLogsResult,
     subscription,
     subscriptionUsage,
   ] =
@@ -146,6 +149,11 @@ export default async function DashboardPage() {
         .order("created_at", { ascending: false }),
       supabase.from("follow_ups").select("*").eq("user_id", user.id),
       supabase.from("reminders").select("*").eq("user_id", user.id),
+      supabase
+        .from("email_logs")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("sent_at", { ascending: false }),
       getOrCreateSubscription(supabase, user.id),
       getSubscriptionUsage(supabase, user.id),
     ]);
@@ -156,6 +164,11 @@ export default async function DashboardPage() {
   const aiActivityLogs = (aiActivityLogsResult.data ?? []) as ActivityLog[];
   const aiFollowUps = (aiFollowUpsResult.data ?? []) as FollowUp[];
   const aiReminders = (aiRemindersResult.data ?? []) as Reminder[];
+  const emailLogs = (emailLogsResult.data ?? []) as {
+    lead_id: string | null;
+    sent_at: string;
+    status: string;
+  }[];
   const aiLeadSummaries = aiLeads.map((lead) => {
     const leadActivity = aiActivityLogs.filter((activity) => activity.lead_id === lead.id);
     const summary = buildAILeadSummary({
@@ -236,6 +249,28 @@ export default async function DashboardPage() {
     return result;
   }, {});
   const mostUsedTemplate = Object.entries(whatsappTemplateCounts).sort(([, a], [, b]) => b - a)[0];
+  const sentEmailLogs = emailLogs.filter((email) => email.status === "Sent");
+  const emailsToday = sentEmailLogs.filter(
+    (email) => new Date(email.sent_at) >= startOfToday,
+  ).length;
+  const emailsThisWeek = sentEmailLogs.filter(
+    (email) => new Date(email.sent_at) >= startOfWeek,
+  ).length;
+  const mostContactedEmailLeads = Object.entries(
+    sentEmailLogs.reduce<Record<string, number>>((result, email) => {
+      if (email.lead_id) {
+        result[email.lead_id] = (result[email.lead_id] ?? 0) + 1;
+      }
+      return result;
+    }, {}),
+  )
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3)
+    .map(([leadId, count]) => ({
+      count,
+      leadId,
+      name: leadNameById.get(leadId) ?? "Unknown Lead",
+    }));
 
   return (
     <AppShell active="dashboard" userEmail={user.email}>
@@ -359,6 +394,55 @@ export default async function DashboardPage() {
                 ))
               ) : (
                 <p className="text-sm font-semibold text-zinc-500">No WhatsApp activity yet.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-5 rounded-xl border border-white/10 bg-zinc-950 p-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-orange-400">
+              Email Activity
+            </p>
+            <h2 className="mt-2 text-2xl font-black">Emails sent</h2>
+          </div>
+          <Link className="text-sm font-bold text-orange-400 hover:text-orange-300" href="/leads">
+            Send email
+          </Link>
+        </div>
+        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+          <div className="rounded-lg border border-white/10 bg-black p-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              Emails Sent Today
+            </p>
+            <p className="mt-3 text-4xl font-black text-orange-500">{emailsToday}</p>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-black p-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              Emails Sent This Week
+            </p>
+            <p className="mt-3 text-4xl font-black text-orange-500">{emailsThisWeek}</p>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-black p-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              Most Contacted Leads
+            </p>
+            <div className="mt-3 space-y-2">
+              {mostContactedEmailLeads.length ? (
+                mostContactedEmailLeads.map((lead) => (
+                  <Link
+                    className="flex items-center justify-between gap-3 rounded-lg border border-white/10 px-3 py-2 text-sm font-bold text-zinc-300 transition hover:border-orange-500/50 hover:text-orange-300"
+                    href={`/leads/${lead.leadId}`}
+                    key={lead.leadId}
+                  >
+                    <span className="truncate">{lead.name}</span>
+                    <span className="text-orange-400">{lead.count}</span>
+                  </Link>
+                ))
+              ) : (
+                <p className="text-sm font-semibold text-zinc-500">No email activity yet.</p>
               )}
             </div>
           </div>

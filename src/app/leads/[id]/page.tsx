@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { EmailSendModal } from "@/components/email-send-modal";
 import { LeadScoreBadge } from "@/components/lead-score-badge";
 import { Notification } from "@/components/notification";
 import { WhatsAppActions } from "@/components/whatsapp-actions";
@@ -13,6 +14,7 @@ import {
   isLimitReached,
 } from "@/lib/billing/subscription";
 import type { ActivityLog } from "@/types/activity-log";
+import type { EmailLog } from "@/types/email-log";
 import type { FollowUp } from "@/types/follow-up";
 import type { Lead } from "@/types/lead";
 import { reminderTypes, type Reminder } from "@/types/reminder";
@@ -37,6 +39,7 @@ export default async function LeadDetailsPage({ params, searchParams }: LeadDeta
     followUpsResult,
     activityLogsResult,
     remindersResult,
+    emailLogsResult,
     subscription,
     subscriptionUsage,
   ] = await Promise.all([
@@ -60,6 +63,12 @@ export default async function LeadDetailsPage({ params, searchParams }: LeadDeta
       .eq("user_id", user.id)
       .order("completed", { ascending: true })
       .order("reminder_date", { ascending: true }),
+    supabase
+      .from("email_logs")
+      .select("*")
+      .eq("lead_id", id)
+      .eq("user_id", user.id)
+      .order("sent_at", { ascending: false }),
     getOrCreateSubscription(supabase, user.id),
     getSubscriptionUsage(supabase, user.id),
   ]);
@@ -72,6 +81,7 @@ export default async function LeadDetailsPage({ params, searchParams }: LeadDeta
   const followUps = (followUpsResult.data ?? []) as FollowUp[];
   const activityLogs = (activityLogsResult.data ?? []) as ActivityLog[];
   const reminders = (remindersResult.data ?? []) as Reminder[];
+  const emailLogs = (emailLogsResult.data ?? []) as EmailLog[];
   const aiLimitReached = isLimitReached(
     subscriptionUsage.aiRequestsUsed,
     subscription.ai_requests_limit,
@@ -104,6 +114,7 @@ export default async function LeadDetailsPage({ params, searchParams }: LeadDeta
           </div>
         </div>
         <div className="flex gap-3">
+          <EmailSendModal lead={lead} />
           <a
             className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-black text-black transition hover:bg-orange-400"
             href="#create-reminder"
@@ -316,6 +327,51 @@ export default async function LeadDetailsPage({ params, searchParams }: LeadDeta
 
       <WhatsAppActions lead={lead} />
       <WhatsAppTemplatesCard lead={lead} />
+
+      <section className="mt-5 rounded-xl border border-white/10 bg-zinc-950 p-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-orange-400">
+              Email History
+            </p>
+            <h2 className="mt-2 text-2xl font-black">Sent emails</h2>
+          </div>
+          <EmailSendModal lead={lead} />
+        </div>
+
+        <div className="mt-5 space-y-3">
+          {emailLogs.length ? (
+            emailLogs.map((email) => (
+              <article className="rounded-lg border border-white/10 bg-black p-4" key={email.id}>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="truncate font-black text-white">{email.subject}</p>
+                    <p className="mt-1 text-sm font-semibold text-zinc-500">
+                      {new Date(email.sent_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <span
+                    className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${
+                      email.status === "Sent"
+                        ? "bg-emerald-500/15 text-emerald-300"
+                        : "bg-red-500/15 text-red-300"
+                    }`}
+                  >
+                    {email.status}
+                  </span>
+                </div>
+              </article>
+            ))
+          ) : (
+            <div className="rounded-lg border border-dashed border-white/10 bg-black p-8 text-center">
+              <p className="font-bold">No emails sent yet</p>
+              <p className="mt-2 text-sm text-zinc-500">
+                Send an email to create the first history entry.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
 
       <section className="mt-5 rounded-xl border border-white/10 bg-zinc-950 p-6">
         <div className="flex items-center justify-between gap-4">

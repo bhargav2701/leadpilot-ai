@@ -8,7 +8,9 @@ export type ActivityType =
   | "CSV Import"
   | "Reminder Created"
   | "Reminder Completed"
-  | "WhatsApp Sent";
+  | "WhatsApp Sent"
+  | "Email Sent"
+  | "Email Failed";
 
 export type ActivityLog = {
   id: string;
