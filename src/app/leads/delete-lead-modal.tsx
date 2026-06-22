@@ -15,7 +15,7 @@ export function DeleteLeadModal({ id, name }: DeleteLeadModalProps) {
   return (
     <>
       <button
-        className="rounded-lg border border-red-500/40 px-4 py-2 text-sm font-bold text-red-300 transition hover:bg-red-500 hover:text-white"
+        className="h-10 w-full rounded-[10px] border border-red-500/40 px-4 text-sm font-bold text-red-300 transition hover:bg-red-500 hover:text-white sm:w-auto"
         onClick={() => setOpen(true)}
         type="button"
       >

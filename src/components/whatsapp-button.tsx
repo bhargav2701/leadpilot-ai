@@ -15,7 +15,7 @@ type WhatsAppButtonProps = {
 };
 
 export function WhatsAppButton({
-  className = "rounded-lg bg-[#25D366] px-4 py-2 text-sm font-black text-black transition hover:bg-[#1ebe5d] disabled:cursor-not-allowed disabled:opacity-50",
+  className = "h-10 rounded-[10px] bg-[#25D366] px-4 text-sm font-black text-black transition hover:bg-[#1ebe5d] disabled:cursor-not-allowed disabled:opacity-50",
   disabledClassName,
   label = "Open WhatsApp",
   leadId,
@@ -53,7 +53,7 @@ export function WhatsAppButton({
         className={
           !isValid
             ? (disabledClassName ??
-              "rounded-lg bg-zinc-800 px-4 py-2 text-sm font-black text-zinc-500 transition hover:bg-zinc-700")
+              "h-10 rounded-[10px] bg-zinc-800 px-4 text-sm font-black text-zinc-500 transition hover:bg-zinc-700")
             : disabled && disabledClassName
               ? disabledClassName
               : className

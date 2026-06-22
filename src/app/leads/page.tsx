@@ -223,25 +223,25 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
         </button>
       </form>
 
-      <section className="mt-6 w-full max-w-full min-w-0 overflow-hidden rounded-xl border border-white/10 bg-zinc-950">
-        <div className="w-full max-w-full min-w-0 overflow-x-auto">
-          <table className="w-full min-w-[720px] table-fixed text-left">
+      <section className="mt-6 w-full max-w-full min-w-0 overflow-visible rounded-xl border border-white/10 bg-zinc-950">
+        <div className="w-full max-w-full min-w-0">
+          <table className="w-full table-fixed text-left">
             <thead className="border-b border-white/10 bg-white/[0.03] text-xs uppercase tracking-[0.16em] text-zinc-500">
               <tr>
-                <th className="w-[190px] px-4 py-4">Lead</th>
-                <th className="w-[120px] px-4 py-4">Phone</th>
-                <th className="w-[120px] px-4 py-4">Source</th>
-                <th className="w-[110px] px-4 py-4">Status</th>
-                <th className="w-[145px] px-4 py-4">AI Score</th>
-                <th className="w-[145px] px-4 py-4">Assigned</th>
-                <th className="w-[110px] px-4 py-4">Created</th>
-                <th className="w-[220px] px-4 py-4 text-right">Actions</th>
+                <th className="w-[38%] px-3 py-4 sm:w-[30%] lg:px-4">Lead</th>
+                <th className="hidden w-[13%] px-3 py-4 md:table-cell lg:px-4">Phone</th>
+                <th className="hidden w-[12%] px-3 py-4 lg:table-cell lg:px-4">Source</th>
+                <th className="w-[18%] px-3 py-4 sm:w-[13%] lg:px-4">Status</th>
+                <th className="hidden w-[13%] px-3 py-4 xl:table-cell lg:px-4">AI Score</th>
+                <th className="hidden w-[13%] px-3 py-4 xl:table-cell lg:px-4">Assigned</th>
+                <th className="hidden w-[10%] px-3 py-4 lg:table-cell lg:px-4">Created</th>
+                <th className="w-[44%] px-3 py-4 text-right sm:w-[27%] lg:px-4">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
               {leads.map((lead) => (
                 <tr className="transition hover:bg-white/[0.03]" key={lead.id}>
-                  <td className="min-w-0 px-4 py-4">
+                  <td className="min-w-0 px-3 py-4 lg:px-4">
                     <Link
                       className="block truncate font-bold text-white hover:text-orange-300"
                       href={`/leads/${lead.id}`}
@@ -250,36 +250,36 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
                     </Link>
                     <p className="mt-1 truncate text-sm text-zinc-500">{lead.email || "No email"}</p>
                   </td>
-                  <td className="truncate px-4 py-4 text-zinc-300">{lead.phone || "-"}</td>
-                  <td className="truncate px-4 py-4 text-zinc-300">{lead.source || "-"}</td>
-                  <td className="px-4 py-4">
-                    <span className="rounded-full bg-orange-500/15 px-3 py-1 text-sm font-bold text-orange-300">
+                  <td className="hidden truncate px-3 py-4 text-zinc-300 md:table-cell lg:px-4">{lead.phone || "-"}</td>
+                  <td className="hidden truncate px-3 py-4 text-zinc-300 lg:table-cell lg:px-4">{lead.source || "-"}</td>
+                  <td className="px-3 py-4 lg:px-4">
+                    <span className="block truncate rounded-full bg-orange-500/15 px-2 py-1 text-center text-xs font-bold text-orange-300 sm:inline-block sm:px-3 sm:text-sm">
                       {lead.status}
                     </span>
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="hidden px-3 py-4 xl:table-cell lg:px-4">
                     <LeadScoreBadge
                       score={lead.lead_score}
                       temperature={lead.lead_temperature}
                     />
                   </td>
-                  <td className="truncate px-4 py-4 text-zinc-400">
+                  <td className="hidden truncate px-3 py-4 text-zinc-400 xl:table-cell lg:px-4">
                     {lead.assigned_to
                       ? lead.assigned_to === workspaceId
                         ? "Owner"
                         : lead.assigned_to
                       : "Unassigned"}
                   </td>
-                  <td className="truncate px-4 py-4 text-zinc-400">
+                  <td className="hidden truncate px-3 py-4 text-zinc-400 lg:table-cell lg:px-4">
                     {new Date(lead.created_at).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-4">
-                    <div className="flex min-w-0 justify-end gap-2">
-                      <div className="w-24">
+                  <td className="px-3 py-4 lg:px-4">
+                    <div className="flex min-w-0 flex-col justify-end gap-2 sm:flex-row sm:items-center">
+                      <div className="w-full sm:w-[112px]">
                         <WhatsAppQuickActions lead={lead} />
                       </div>
                       <Link
-                        className="rounded-lg border border-white/10 px-2.5 py-2 text-sm font-bold text-zinc-300 transition hover:border-orange-500/50 hover:text-orange-300"
+                        className="flex h-10 items-center justify-center rounded-[10px] border border-white/10 px-3 text-sm font-bold text-zinc-300 transition hover:border-orange-500/50 hover:text-orange-300"
                         href={`/leads/${lead.id}/edit`}
                       >
                         Edit

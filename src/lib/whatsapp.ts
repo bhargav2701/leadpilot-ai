@@ -8,6 +8,8 @@ export type WhatsAppTemplateKey =
   | "re-engage-lead";
 
 export type WhatsAppTemplate = {
+  description: string;
+  icon: string;
   key: WhatsAppTemplateKey;
   label: string;
   shortLabel: string;
@@ -19,11 +21,41 @@ export type WhatsAppLeadContext = Pick<
 >;
 
 export const whatsappTemplates: WhatsAppTemplate[] = [
-  { key: "follow-up", label: "Follow Up", shortLabel: "Follow Up" },
-  { key: "schedule-demo", label: "Schedule Demo", shortLabel: "Demo" },
-  { key: "send-pricing", label: "Send Pricing", shortLabel: "Pricing" },
-  { key: "meeting-request", label: "Meeting Request", shortLabel: "Meeting" },
-  { key: "re-engage-lead", label: "Re-engage Lead", shortLabel: "Re-engage" },
+  {
+    description: "Send a polite follow-up for an active inquiry.",
+    icon: "->",
+    key: "follow-up",
+    label: "Follow Up",
+    shortLabel: "Follow Up",
+  },
+  {
+    description: "Invite a high-intent lead to a quick product demo.",
+    icon: ">",
+    key: "schedule-demo",
+    label: "Schedule Demo",
+    shortLabel: "Demo",
+  },
+  {
+    description: "Share pricing context and offer to answer questions.",
+    icon: "$",
+    key: "send-pricing",
+    label: "Send Pricing",
+    shortLabel: "Pricing",
+  },
+  {
+    description: "Ask for a suitable time to discuss requirements.",
+    icon: "T",
+    key: "meeting-request",
+    label: "Meeting Request",
+    shortLabel: "Meeting",
+  },
+  {
+    description: "Restart the conversation with a cold or quiet lead.",
+    icon: "R",
+    key: "re-engage-lead",
+    label: "Re-engage Lead",
+    shortLabel: "Re-engage",
+  },
 ];
 
 export function formatWhatsAppPhone(phone: string | null | undefined) {

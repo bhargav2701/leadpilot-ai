@@ -43,14 +43,14 @@ export function WhatsAppTemplatesCard({ lead }: WhatsAppTemplatesCardProps) {
         </div>
         <div className="flex flex-wrap gap-2">
           <button
-            className="rounded-lg border border-white/10 px-4 py-2 text-sm font-bold text-zinc-300 transition hover:border-orange-500/50 hover:text-orange-300"
+            className="h-10 rounded-[10px] border border-white/10 px-4 text-sm font-bold text-zinc-300 transition hover:border-orange-500/50 hover:text-orange-300"
             onClick={copyMessage}
             type="button"
           >
             Copy Message
           </button>
           <WhatsAppButton
-            className="rounded-lg bg-[#25D366] px-4 py-2 text-sm font-black text-black transition hover:bg-[#1ebe5d]"
+            className="h-10 rounded-[10px] bg-[#25D366] px-4 text-sm font-black text-black transition hover:bg-[#1ebe5d]"
             label={`Send ${template.shortLabel}`}
             leadId={lead.id}
             message={message}
